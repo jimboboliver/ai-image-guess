@@ -78,7 +78,6 @@ export const main: APIGatewayProxyHandler = async (event) => {
     }
   };
 
-  // Iterate through all the connections
   await Promise.all(connections.Items?.map(postToConnection) ?? []);
 
   return { statusCode: 200, body: "Message sent" };
