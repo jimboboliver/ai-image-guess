@@ -12,9 +12,13 @@ export default {
     app.stack(function Site({ stack }) {
       const table = new Table(stack, "Connections", {
         fields: {
+          game: "string",
           id: "string",
         },
-        primaryIndex: { partitionKey: "id" },
+        primaryIndex: { partitionKey: "game", sortKey: "id" },
+        globalIndexes: {
+          idIndex: { partitionKey: "id", sortKey: "game" },
+        },
       });
       const api = new WebSocketApi(stack, "Api", {
         defaults: {

@@ -11,6 +11,7 @@ export const main: APIGatewayProxyHandler = async (event) => {
     new PutItemCommand({
       TableName: Table.Connections.tableName,
       Item: marshall({
+        game: "game#1",
         id: event.requestContext.connectionId,
       }),
     }),

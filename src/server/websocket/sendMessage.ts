@@ -5,12 +5,14 @@ import {
 import {
   DeleteItemCommand,
   DynamoDB,
-  ScanCommand,
+  QueryCommand,
   type AttributeValue,
 } from "@aws-sdk/client-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import type { APIGatewayProxyHandler } from "aws-lambda";
 import { Table } from "sst/node/table";
+
+import type { ConnectionRecord } from "../db/dynamodb/schema";
 
 const TableName = Table.Connections.tableName;
 const ddbClient = new DynamoDB();
@@ -27,9 +29,17 @@ export const main: APIGatewayProxyHandler = async (event) => {
   ).data;
   const { stage, domainName } = event.requestContext;
 
-  console.log("Scanning for connections...");
+  console.log("Querying for connections...");
+  // query game = game#1, id starts with connection#
   const connections = await ddbClient.send(
-    new ScanCommand({ TableName, ProjectionExpression: "id" }),
+    new QueryCommand({
+      TableName,
+      KeyConditionExpression: "game = :game and begins_with(id, :connection)",
+      ExpressionAttributeValues: marshall({
+        ":game": "game#1",
+        ":connection": "connection#",
+      }),
+    }),
   );
   console.log("Found connections:", connections.Items);
 
@@ -40,11 +50,15 @@ export const main: APIGatewayProxyHandler = async (event) => {
   const postToConnection = async function (
     connectionRecord: Record<string, AttributeValue>,
   ) {
-    const id = unmarshall(connectionRecord).id as string;
+    const connectionId = (unmarshall(connectionRecord) as ConnectionRecord)
+      .connectionId;
     try {
-      console.log("Sending message to a connection", id);
+      console.log("Sending message to a connection", connectionId);
       await apiClient.send(
-        new PostToConnectionCommand({ ConnectionId: id, Data: messageData }),
+        new PostToConnectionCommand({
+          ConnectionId: connectionId,
+          Data: messageData,
+        }),
       );
     } catch (e) {
       if (e.statusCode === 410) {
@@ -52,7 +66,10 @@ export const main: APIGatewayProxyHandler = async (event) => {
         await ddbClient.send(
           new DeleteItemCommand({
             TableName,
-            Key: marshall({ id: connectionRecord.id }),
+            Key: {
+              game: connectionRecord.game,
+              id: connectionRecord.id,
+            },
           }),
         );
       } else {

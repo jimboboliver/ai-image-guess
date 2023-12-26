@@ -11,10 +11,10 @@ export const main: APIGatewayProxyHandler = async (event) => {
     new DeleteItemCommand({
       TableName: Table.Connections.tableName,
       Key: marshall({
+        game: "game#1",
         id: event.requestContext.connectionId,
       }),
     }),
   );
-
   return { statusCode: 200, body: "Disconnected" };
 };
