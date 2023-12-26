@@ -4,7 +4,7 @@ import { env } from "~/env";
 import React from "react";
 
 export function WebSocketTest() {
-  const [ws, setWs] = React.useState<WebSocket | null>(null);
+  const [, setWs] = React.useState<WebSocket | null>(null);
   React.useEffect(() => {
     const ws = new WebSocket(env.NEXT_PUBLIC_API_ENDPOINT_WEBSOCKET);
     ws.onopen = () => {

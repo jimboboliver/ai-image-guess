@@ -1,5 +1,4 @@
 import { CreatePost } from "~/app/_components/create-post";
-import { env } from "~/env";
 import { getServerAuthSession } from "~/server/auth";
 import { api } from "~/trpc/server";
 import Link from "next/link";

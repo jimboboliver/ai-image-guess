@@ -17,7 +17,14 @@ const ddbClient = new DynamoDB();
 
 export const main: APIGatewayProxyHandler = async (event) => {
   console.log(event);
-  const messageData = JSON.parse(event.body).data;
+  if (event.body == null) {
+    throw new Error("No body");
+  }
+  const messageData = (
+    JSON.parse(event.body) as {
+      data: string;
+    }
+  ).data;
   const { stage, domainName } = event.requestContext;
 
   console.log("Scanning for connections...");
@@ -35,21 +42,21 @@ export const main: APIGatewayProxyHandler = async (event) => {
   ) {
     const id = unmarshall(connectionRecord).id as string;
     try {
-      // Send the message to the given client
       console.log("Sending message to a connection", id);
       await apiClient.send(
         new PostToConnectionCommand({ ConnectionId: id, Data: messageData }),
       );
     } catch (e) {
-      console.log("Failed to send message", JSON.stringify(e));
       if (e.statusCode === 410) {
-        // Remove stale connections
+        console.log("Connection was closed");
         await ddbClient.send(
           new DeleteItemCommand({
             TableName,
             Key: marshall({ id: connectionRecord.id }),
           }),
         );
+      } else {
+        console.log("Failed to send message", JSON.stringify(e));
       }
     }
   };
