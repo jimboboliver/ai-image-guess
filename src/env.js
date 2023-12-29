@@ -31,6 +31,7 @@ export const env = createEnv({
     // Add ` on ID and SECRET if you want to make sure they're not empty
     DISCORD_CLIENT_ID: z.string(),
     DISCORD_CLIENT_SECRET: z.string(),
+    API_KEY_OPENAI: z.string(),
   },
 
   /**
@@ -55,6 +56,7 @@ export const env = createEnv({
     DISCORD_CLIENT_SECRET: process.env.DISCORD_CLIENT_SECRET,
     NEXT_PUBLIC_API_ENDPOINT_WEBSOCKET:
       process.env.NEXT_PUBLIC_API_ENDPOINT_WEBSOCKET,
+    API_KEY_OPENAI: process.env.API_KEY_OPENAI,
   },
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially

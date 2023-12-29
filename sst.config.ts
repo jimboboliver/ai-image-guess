@@ -10,7 +10,7 @@ export default {
   },
   stacks(app) {
     app.stack(function Site({ stack }) {
-      const table = new Table(stack, "Connections", {
+      const table = new Table(stack, "chimpin", {
         fields: {
           game: "string",
           id: "string",
@@ -29,7 +29,11 @@ export default {
         routes: {
           $connect: "src/server/websocket/connect.main",
           $disconnect: "src/server/websocket/disconnect.main",
-          sendmessage: "src/server/websocket/sendMessage.main",
+          joinGame: "src/server/websocket/joinGame.main",
+          makeGame: "src/server/websocket/makeGame.main",
+          makeImage: "src/server/websocket/makeImage.main",
+          progressGame: "src/server/websocket/progressGame.main",
+          vote: "src/server/websocket/vote.main",
         },
       });
 
