@@ -11,7 +11,8 @@ import OpenAI from "openai";
 import { Table } from "sst/node/table";
 import { v4 as uuidv4 } from "uuid";
 
-import type { ConnectionRecord, ImageRecord } from "../db/dynamodb/schema";
+import type { ConnectionRecord } from "../db/dynamodb/connection";
+import type { ImageRecord } from "../db/dynamodb/image";
 import { sendRowToAllGameConnections } from "../utils/sendRowToAllGameConnections";
 
 const ddbClient = new DynamoDB();
@@ -76,7 +77,6 @@ export const main: APIGatewayProxyHandler = async (event) => {
     });
   }
   await sendRowToAllGameConnections(
-    event.requestContext.connectionId,
     connectionRecord.game.split("#")[1]!,
     imageRecord,
     "imageGenerated",

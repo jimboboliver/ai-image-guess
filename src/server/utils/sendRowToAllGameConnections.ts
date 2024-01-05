@@ -10,11 +10,10 @@ import {
 import { marshall } from "@aws-sdk/util-dynamodb";
 import { Table } from "sst/node/table";
 
-import type { GameRecord } from "../db/dynamodb/schema";
+import type { GameRecord } from "../db/dynamodb/game";
 import { deleteConnection } from "./deleteConnection";
 
 export async function sendRowToAllGameConnections<T extends GameRecord>(
-  connectionId: string,
   gameId: string,
   record: T,
   action: string,
@@ -35,11 +34,12 @@ export async function sendRowToAllGameConnections<T extends GameRecord>(
   const sendToConnection = async function (
     connectionRecord: Record<string, AttributeValue>,
   ) {
+    const connectionId = connectionRecord.id?.S?.split("#")[1];
     try {
       console.log("Sending message to a connection", connectionId);
       await apiClient.send(
         new PostToConnectionCommand({
-          ConnectionId: connectionRecord.id?.S?.split("#")[1],
+          ConnectionId: connectionId,
           Data: JSON.stringify({
             action,
             data: record,

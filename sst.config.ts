@@ -1,3 +1,4 @@
+import { env } from "~/env";
 import type { SSTConfig } from "sst";
 import { Table, WebSocketApi } from "sst/constructs";
 
@@ -24,6 +25,7 @@ export default {
         defaults: {
           function: {
             bind: [table],
+            environment: env,
           },
         },
         routes: {

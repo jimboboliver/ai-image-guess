@@ -9,7 +9,8 @@ import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import type { APIGatewayProxyHandler } from "aws-lambda";
 import { Table } from "sst/node/table";
 
-import type { ConnectionRecord, GameMetaRecord } from "../db/dynamodb/schema";
+import type { ConnectionRecord } from "../db/dynamodb/connection";
+import type { GameMetaRecord } from "../db/dynamodb/gameMeta";
 import { sendRowToAllGameConnections } from "../utils/sendRowToAllGameConnections";
 
 const ddbClient = new DynamoDB();
@@ -88,9 +89,8 @@ export const main: APIGatewayProxyHandler = async (event) => {
     });
   }
   await sendRowToAllGameConnections(
-    event.requestContext.connectionId,
     connectionRecord.game.split("#")[1]!,
-    unmarshall(gameRecord),
+    unmarshall(gameRecord) as GameMetaRecord,
     "progressGame",
     ddbClient,
     apiClient,

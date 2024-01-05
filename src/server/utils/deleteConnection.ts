@@ -26,8 +26,8 @@ export async function deleteConnection(connectionId: string) {
       new DeleteItemCommand({
         TableName: Table.chimpin.tableName,
         Key: {
-          game: connectionRecord.game,
-          id: connectionRecord.id,
+          game: connectionRecord.game!,
+          id: connectionRecord.id!,
         },
       }),
     );
