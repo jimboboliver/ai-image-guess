@@ -6,6 +6,10 @@ import { QueryCommand, type DynamoDB } from "@aws-sdk/client-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import { Table } from "sst/node/table";
 
+import type { ConnectionRecord } from "../db/dynamodb/connection";
+import type { GameMetaRecord } from "../db/dynamodb/gameMeta";
+import type { ImageRecord } from "../db/dynamodb/image";
+import type { FullGameMessage } from "../websocket/messageschema/server2client/fullGame";
 import { deleteConnection } from "./deleteConnection";
 
 export async function sendFullGame(
@@ -24,15 +28,22 @@ export async function sendFullGame(
     }),
   );
 
+  const gameRows = gameRecords.Items?.map((record) => unmarshall(record)) as (
+    | ConnectionRecord
+    | GameMetaRecord
+    | ImageRecord
+  )[];
+
   try {
     console.log("Sending message to a connection", connectionId);
+    const fullGameMessage: FullGameMessage = {
+      action: "fullGame",
+      data: gameRows,
+    };
     await apiClient.send(
       new PostToConnectionCommand({
         ConnectionId: connectionId,
-        Data: JSON.stringify({
-          action: "fullGame",
-          data: gameRecords.Items?.map((record) => unmarshall(record)),
-        }),
+        Data: JSON.stringify(fullGameMessage),
       }),
     );
   } catch (e) {

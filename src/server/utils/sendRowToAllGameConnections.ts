@@ -10,13 +10,12 @@ import {
 import { marshall } from "@aws-sdk/util-dynamodb";
 import { Table } from "sst/node/table";
 
-import type { GameRecord } from "../db/dynamodb/game";
+import type { AnyMessage } from "../websocket/messageschema/server2client/any";
 import { deleteConnection } from "./deleteConnection";
 
-export async function sendRowToAllGameConnections<T extends GameRecord>(
+export async function sendMessageToAllGameConnections(
   gameId: string,
-  record: T,
-  action: string,
+  message: AnyMessage,
   ddbClient: DynamoDB,
   apiClient: ApiGatewayManagementApiClient,
 ) {
@@ -40,10 +39,7 @@ export async function sendRowToAllGameConnections<T extends GameRecord>(
       await apiClient.send(
         new PostToConnectionCommand({
           ConnectionId: connectionId,
-          Data: JSON.stringify({
-            action,
-            data: record,
-          }),
+          Data: JSON.stringify(message),
         }),
       );
     } catch (e) {

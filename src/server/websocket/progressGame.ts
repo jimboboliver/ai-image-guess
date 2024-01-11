@@ -11,7 +11,11 @@ import { Table } from "sst/node/table";
 
 import type { ConnectionRecord } from "../db/dynamodb/connection";
 import type { GameMetaRecord } from "../db/dynamodb/gameMeta";
-import { sendRowToAllGameConnections } from "../utils/sendRowToAllGameConnections";
+import { sendMessageToAllGameConnections } from "../utils/sendRowToAllGameConnections";
+import {
+  progressGameMessageSchema,
+  type ProgressGameMessage,
+} from "./messageschema/client2server/progressGame";
 
 const ddbClient = new DynamoDB();
 
@@ -19,8 +23,20 @@ let apiClient: ApiGatewayManagementApiClient;
 
 export const main: APIGatewayProxyHandler = async (event) => {
   console.log(event);
+  if (event.requestContext.connectionId == null) {
+    throw new Error("No connection");
+  }
   if (event.body == null) {
     throw new Error("No body");
+  }
+  const message = JSON.parse(event.body) as ProgressGameMessage["data"];
+  try {
+    progressGameMessageSchema.parse(message);
+  } catch (error) {
+    if (error instanceof Error) {
+      console.error(error.message);
+      return { statusCode: 400, body: error.message };
+    }
   }
 
   // get connection from db
@@ -41,14 +57,6 @@ export const main: APIGatewayProxyHandler = async (event) => {
     connectionRecords.Items[0]!,
   ) as ConnectionRecord;
 
-  const newStatus = (
-    JSON.parse(event.body) as {
-      status: GameMetaRecord["status"];
-    }
-  ).status;
-  if (newStatus == null) {
-    throw new Error("No promptImage");
-  }
   // update game meta
   const gameRecord = (
     await ddbClient.send(
@@ -65,7 +73,7 @@ export const main: APIGatewayProxyHandler = async (event) => {
     throw new Error("No game");
   }
   gameRecord.status = {
-    S: newStatus,
+    S: message.status,
   };
   await ddbClient.send(
     new UpdateItemCommand({
@@ -79,7 +87,7 @@ export const main: APIGatewayProxyHandler = async (event) => {
         "#status": "status",
       },
       ExpressionAttributeValues: marshall({
-        ":status": newStatus,
+        ":status": message.status,
       }),
     }),
   );
@@ -88,10 +96,9 @@ export const main: APIGatewayProxyHandler = async (event) => {
       endpoint: `https://${event.requestContext.domainName}/${event.requestContext.stage}`,
     });
   }
-  await sendRowToAllGameConnections(
+  await sendMessageToAllGameConnections(
     connectionRecord.game.split("#")[1]!,
-    unmarshall(gameRecord) as GameMetaRecord,
-    "progressGame",
+    { data: unmarshall(gameRecord) as GameMetaRecord, action: "progressGame" },
     ddbClient,
     apiClient,
   );

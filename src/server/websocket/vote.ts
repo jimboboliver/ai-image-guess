@@ -10,7 +10,11 @@ import { Table } from "sst/node/table";
 
 import type { ConnectionRecord } from "../db/dynamodb/connection";
 import type { ImageRecord } from "../db/dynamodb/image";
-import { sendRowToAllGameConnections } from "../utils/sendRowToAllGameConnections";
+import { sendMessageToAllGameConnections } from "../utils/sendRowToAllGameConnections";
+import {
+  voteMessageSchema,
+  type VoteMessage,
+} from "./messageschema/client2server/vote";
 
 const ddbClient = new DynamoDB();
 
@@ -21,11 +25,15 @@ export const main: APIGatewayProxyHandler = async (event) => {
   if (event.body == null) {
     throw new Error("No body");
   }
-  const votedImageId = (
-    JSON.parse(event.body) as {
-      imageId: string;
+  const message = JSON.parse(event.body) as VoteMessage["data"];
+  try {
+    voteMessageSchema.parse(message);
+  } catch (error) {
+    if (error instanceof Error) {
+      console.error(error.message);
+      return { statusCode: 400, body: error.message };
     }
-  ).imageId;
+  }
 
   if (apiClient == null) {
     apiClient = new ApiGatewayManagementApiClient({
@@ -57,7 +65,7 @@ export const main: APIGatewayProxyHandler = async (event) => {
       KeyConditionExpression: "game = :game and id = :id",
       ExpressionAttributeValues: marshall({
         ":game": connectionRecord.game,
-        ":id": `image#${votedImageId}`,
+        ":id": `image#${message.imageId}`,
       }),
     }),
   );
@@ -76,7 +84,7 @@ export const main: APIGatewayProxyHandler = async (event) => {
       TableName: Table.chimpin.tableName,
       Key: marshall({
         game: connectionRecord.game,
-        id: `image#${votedImageId}`,
+        id: `image#${message.imageId}`,
       }),
       UpdateExpression: "SET #votes = :votes",
       ExpressionAttributeNames: {
@@ -89,10 +97,9 @@ export const main: APIGatewayProxyHandler = async (event) => {
   );
 
   // send vote to all connections
-  await sendRowToAllGameConnections(
+  await sendMessageToAllGameConnections(
     connectionRecord.game.split("#")[1]!,
-    imageRecord,
-    "vote",
+    { data: imageRecord, action: "vote" },
     ddbClient,
     apiClient,
   );

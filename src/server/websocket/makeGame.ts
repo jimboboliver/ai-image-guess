@@ -6,12 +6,16 @@ import { Table } from "sst/node/table";
 
 import { addConnectionToGame } from "../utils/addConnectionToGame";
 import { sendFullGame } from "../utils/sendFullGame";
+import {
+  makeGameMessageSchema,
+  type MakeGameMessage,
+} from "./messageschema/client2server/makeGame";
 
 const ddbClient = new DynamoDB();
 
 let apiClient: ApiGatewayManagementApiClient;
 
-function generateRandomCode(length = 5): string {
+function generateRandomCode(length = 4): string {
   const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
   let result = "";
   for (let i = 0; i < length; i++) {
@@ -22,6 +26,21 @@ function generateRandomCode(length = 5): string {
 
 export const main: APIGatewayProxyHandler = async (event) => {
   console.log(event);
+  if (event.requestContext.connectionId == null) {
+    throw new Error("No connection");
+  }
+  if (event.body == null) {
+    throw new Error("No body");
+  }
+  const message = JSON.parse(event.body) as MakeGameMessage["data"];
+  try {
+    makeGameMessageSchema.parse(message);
+  } catch (error) {
+    if (error instanceof Error) {
+      console.error(error.message);
+      return { statusCode: 400, body: error.message };
+    }
+  }
   const gameId = generateRandomCode();
   // TODO check game doesn't exist
   await ddbClient.send(
@@ -45,6 +64,7 @@ export const main: APIGatewayProxyHandler = async (event) => {
   await addConnectionToGame(
     event.requestContext.connectionId,
     gameId,
+    message.name,
     ddbClient,
   );
 

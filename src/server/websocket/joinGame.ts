@@ -4,6 +4,10 @@ import type { APIGatewayProxyHandler } from "aws-lambda";
 
 import { addConnectionToGame } from "../utils/addConnectionToGame";
 import { sendFullGame } from "../utils/sendFullGame";
+import {
+  joinGameMessageSchema,
+  type JoinGameMessage,
+} from "./messageschema/client2server/joinGame";
 
 const ddbClient = new DynamoDB();
 
@@ -11,18 +15,26 @@ let apiClient: ApiGatewayManagementApiClient;
 
 export const main: APIGatewayProxyHandler = async (event) => {
   console.log(event);
+  if (event.requestContext.connectionId == null) {
+    throw new Error("No connection");
+  }
   if (event.body == null) {
     throw new Error("No body");
   }
-  const gameId = (
-    JSON.parse(event.body) as {
-      gameId: string;
+  const message = JSON.parse(event.body) as JoinGameMessage["data"];
+  try {
+    joinGameMessageSchema.parse(message);
+  } catch (error) {
+    if (error instanceof Error) {
+      console.error(error.message);
+      return { statusCode: 400, body: error.message };
     }
-  ).gameId;
+  }
   try {
     await addConnectionToGame(
       event.requestContext.connectionId,
-      gameId,
+      message.gameId,
+      message.name,
       ddbClient,
     );
   } catch (error) {
@@ -40,7 +52,7 @@ export const main: APIGatewayProxyHandler = async (event) => {
 
   await sendFullGame(
     event.requestContext.connectionId,
-    gameId,
+    message.gameId,
     ddbClient,
     apiClient,
   );

@@ -6,11 +6,13 @@ import {
 import { marshall } from "@aws-sdk/util-dynamodb";
 import { Table } from "sst/node/table";
 
+import type { ConnectionRecord } from "../db/dynamodb/connection";
 import { deleteConnection } from "./deleteConnection";
 
 export async function addConnectionToGame(
   connectionId: string,
   gameId: string,
+  name: string,
   ddbClient: DynamoDB,
 ) {
   const gameMeta = await ddbClient.send(
@@ -27,13 +29,17 @@ export async function addConnectionToGame(
   }
   // check that connection isn't in another game
   await deleteConnection(connectionId);
+
+  const newConnection: ConnectionRecord = {
+    id: `connection#${connectionId}`,
+    game: `game#${gameId}`,
+    name,
+  };
+
   await ddbClient.send(
     new PutItemCommand({
       TableName: Table.chimpin.tableName,
-      Item: marshall({
-        game: `game#${gameId}`,
-        id: `connection#${connectionId}`,
-      }),
+      Item: marshall(newConnection),
     }),
   );
 }
