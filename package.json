@@ -53,6 +53,7 @@
     "autoprefixer": "^10.4.14",
     "aws-cdk-lib": "2.110.1",
     "constructs": "10.3.0",
+    "daisyui": "^4.5.0",
     "dotenv-cli": "^7.3.0",
     "drizzle-kit": "^0.19.3",
     "eslint": "^8.54.0",
