@@ -21,7 +21,7 @@ export const main: APIGatewayProxyHandler = async (event) => {
   if (event.body == null) {
     throw new Error("No body");
   }
-  const message = JSON.parse(event.body) as JoinGameMessage["data"];
+  const message = JSON.parse(event.body) as JoinGameMessage;
   try {
     joinGameMessageSchema.parse(message);
   } catch (error) {
@@ -33,8 +33,8 @@ export const main: APIGatewayProxyHandler = async (event) => {
   try {
     await addConnectionToGame(
       event.requestContext.connectionId,
-      message.gameId,
-      message.name,
+      message.data.gameCode,
+      message.data.name,
       ddbClient,
     );
   } catch (error) {
@@ -52,7 +52,7 @@ export const main: APIGatewayProxyHandler = async (event) => {
 
   await sendFullGame(
     event.requestContext.connectionId,
-    message.gameId,
+    message.data.gameCode,
     ddbClient,
     apiClient,
   );

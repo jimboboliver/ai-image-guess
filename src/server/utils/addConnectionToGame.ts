@@ -36,6 +36,8 @@ export async function addConnectionToGame(
     name,
   };
 
+  console.log("Adding connection to game", newConnection);
+
   await ddbClient.send(
     new PutItemCommand({
       TableName: Table.chimpin.tableName,

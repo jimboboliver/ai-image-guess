@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const makeGameMessageSchema = z.object({
-  action: z.literal("joinGame"),
+  action: z.literal("makeGame"),
   data: z.object({
     name: z.string(),
   }),

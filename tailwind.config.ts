@@ -10,5 +10,8 @@ export default {
       },
     },
   },
+  daisyui: {
+    themes: ["lemonade", "forest"],
+  },
   plugins: [require("daisyui")],
 } satisfies Config;

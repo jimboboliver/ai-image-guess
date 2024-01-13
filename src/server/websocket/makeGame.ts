@@ -4,6 +4,7 @@ import { marshall } from "@aws-sdk/util-dynamodb";
 import type { APIGatewayProxyHandler } from "aws-lambda";
 import { Table } from "sst/node/table";
 
+import type { GameMetaRecord } from "../db/dynamodb/gameMeta";
 import { addConnectionToGame } from "../utils/addConnectionToGame";
 import { sendFullGame } from "../utils/sendFullGame";
 import {
@@ -32,7 +33,7 @@ export const main: APIGatewayProxyHandler = async (event) => {
   if (event.body == null) {
     throw new Error("No body");
   }
-  const message = JSON.parse(event.body) as MakeGameMessage["data"];
+  const message = JSON.parse(event.body) as MakeGameMessage;
   try {
     makeGameMessageSchema.parse(message);
   } catch (error) {
@@ -41,17 +42,22 @@ export const main: APIGatewayProxyHandler = async (event) => {
       return { statusCode: 400, body: error.message };
     }
   }
-  const gameId = generateRandomCode();
+  const gameCode = generateRandomCode();
+  const gameMetaRow: GameMetaRecord = {
+    game: `game#${gameCode}`,
+    id: "meta",
+    status: "lobby",
+    gameCode: gameCode,
+    ownerConnectionId: event.requestContext.connectionId,
+  };
+
+  console.log("Creating game", gameMetaRow);
+
   // TODO check game doesn't exist
   await ddbClient.send(
     new PutItemCommand({
       TableName: Table.chimpin.tableName,
-      Item: marshall({
-        game: `game#${gameId}`,
-        id: "meta",
-        status: "lobby",
-        ownerConnectionId: event.requestContext.connectionId,
-      }),
+      Item: marshall(gameMetaRow),
     }),
   );
 
@@ -63,14 +69,14 @@ export const main: APIGatewayProxyHandler = async (event) => {
 
   await addConnectionToGame(
     event.requestContext.connectionId,
-    gameId,
-    message.name,
+    gameCode,
+    message.data.name,
     ddbClient,
   );
 
   await sendFullGame(
     event.requestContext.connectionId,
-    gameId,
+    gameCode,
     ddbClient,
     apiClient,
   );

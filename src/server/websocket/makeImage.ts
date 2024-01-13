@@ -33,7 +33,7 @@ export const main: APIGatewayProxyHandler = async (event) => {
   if (event.body == null) {
     throw new Error("No body");
   }
-  const message = JSON.parse(event.body) as MakeImageMessage["data"];
+  const message = JSON.parse(event.body) as MakeImageMessage;
   try {
     makeImageMessageSchema.parse(message);
   } catch (error) {
@@ -63,7 +63,7 @@ export const main: APIGatewayProxyHandler = async (event) => {
 
   const response = await api.images.generate({
     model: "dall-e-2",
-    prompt: message.promptImage,
+    prompt: message.data.promptImage,
     n: 1,
     size: "256x256",
   });

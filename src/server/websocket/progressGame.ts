@@ -29,7 +29,7 @@ export const main: APIGatewayProxyHandler = async (event) => {
   if (event.body == null) {
     throw new Error("No body");
   }
-  const message = JSON.parse(event.body) as ProgressGameMessage["data"];
+  const message = JSON.parse(event.body) as ProgressGameMessage;
   try {
     progressGameMessageSchema.parse(message);
   } catch (error) {
@@ -73,7 +73,7 @@ export const main: APIGatewayProxyHandler = async (event) => {
     throw new Error("No game");
   }
   gameRecord.status = {
-    S: message.status,
+    S: message.data.status,
   };
   await ddbClient.send(
     new UpdateItemCommand({
@@ -87,7 +87,7 @@ export const main: APIGatewayProxyHandler = async (event) => {
         "#status": "status",
       },
       ExpressionAttributeValues: marshall({
-        ":status": message.status,
+        ":status": message.data.status,
       }),
     }),
   );

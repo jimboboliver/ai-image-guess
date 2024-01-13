@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { joinGameMessageSchema } from "./joinGame";
 import { makeGameMessageSchema } from "./makeGame";
 import { makeImageMessageSchema } from "./makeImage";
 import { progressGameMessageSchema } from "./progressGame";
@@ -10,6 +11,7 @@ export const anyMessageSchema = z.union([
   makeGameMessageSchema,
   voteMessageSchema,
   makeImageMessageSchema,
+  joinGameMessageSchema,
 ]);
 
 export type AnyMessage = z.infer<typeof anyMessageSchema>;

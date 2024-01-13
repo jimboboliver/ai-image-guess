@@ -25,7 +25,7 @@ export const main: APIGatewayProxyHandler = async (event) => {
   if (event.body == null) {
     throw new Error("No body");
   }
-  const message = JSON.parse(event.body) as VoteMessage["data"];
+  const message = JSON.parse(event.body) as VoteMessage;
   try {
     voteMessageSchema.parse(message);
   } catch (error) {
@@ -65,7 +65,7 @@ export const main: APIGatewayProxyHandler = async (event) => {
       KeyConditionExpression: "game = :game and id = :id",
       ExpressionAttributeValues: marshall({
         ":game": connectionRecord.game,
-        ":id": `image#${message.imageId}`,
+        ":id": `image#${message.data.imageId}`,
       }),
     }),
   );
@@ -84,7 +84,7 @@ export const main: APIGatewayProxyHandler = async (event) => {
       TableName: Table.chimpin.tableName,
       Key: marshall({
         game: connectionRecord.game,
-        id: `image#${message.imageId}`,
+        id: `image#${message.data.imageId}`,
       }),
       UpdateExpression: "SET #votes = :votes",
       ExpressionAttributeNames: {
