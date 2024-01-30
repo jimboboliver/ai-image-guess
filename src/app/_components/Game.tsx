@@ -92,6 +92,10 @@ export function Game() {
           setImageRecords((prev) => [...prev, message.data]);
         } else if (message.action === "newConnection") {
           setConnectionRecords((prev) => [...prev, message.data]);
+        } else if (message.action === "deleteConnection") {
+          setConnectionRecords((prev) =>
+            prev.filter((x) => x.id !== message.data.id),
+          );
         }
       };
       return wsNew;

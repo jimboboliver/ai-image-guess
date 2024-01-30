@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { deleteConnectionMessageSchema } from "./deleteConnection";
 import { fullGameMessageSchema } from "./fullGame";
 import { imageGeneratedMessageSchema } from "./imageGenerated";
 import { newConnectionMessageSchema } from "./newConnection";
@@ -12,6 +13,7 @@ export const anyMessageSchema = z.union([
   progressGameMessageSchema,
   voteMessageSchema,
   newConnectionMessageSchema,
+  deleteConnectionMessageSchema,
 ]);
 
 export type AnyMessage = z.infer<typeof anyMessageSchema>;

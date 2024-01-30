@@ -7,10 +7,10 @@ import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import { Table } from "sst/node/table";
 
 import type { ConnectionRecord } from "../db/dynamodb/connection";
-import type { NewConnectionMessage } from "../websocket/messageschema/server2client/newConnection";
+import type { DeleteConnectionMessage } from "../websocket/messageschema/server2client/deleteConnection";
 import { deleteConnection } from "./deleteConnection";
 
-export async function notifyNewConnection(
+export async function notifyDeleteConnection(
   connectionRecord: ConnectionRecord,
   ddbClient: DynamoDB,
   apiClient: ApiGatewayManagementApiClient,
@@ -34,8 +34,8 @@ export async function notifyNewConnection(
         "Sending message to a connection",
         existingConnectionRecord.id.split("#")[1],
       );
-      const fullGameMessage: NewConnectionMessage = {
-        action: "newConnection",
+      const fullGameMessage: DeleteConnectionMessage = {
+        action: "deleteConnection",
         data: connectionRecord,
       };
       await apiClient.send(

@@ -4,8 +4,10 @@ import {
   QueryCommand,
   type AttributeValue,
 } from "@aws-sdk/client-dynamodb";
-import { marshall } from "@aws-sdk/util-dynamodb";
+import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import { Table } from "sst/node/table";
+
+import type { ConnectionRecord } from "../db/dynamodb/connection";
 
 export async function deleteConnection(connectionId: string) {
   const ddbClient = new DynamoDB();
@@ -34,4 +36,10 @@ export async function deleteConnection(connectionId: string) {
   };
 
   await Promise.all(connectionRecords.Items?.map(deleteConnection) ?? []);
+
+  return (
+    connectionRecords.Items?.map(
+      (item) => unmarshall(item) as ConnectionRecord,
+    ) ?? []
+  );
 }

@@ -56,12 +56,7 @@ export const main: APIGatewayProxyHandler = async (event) => {
     });
   }
 
-  await notifyNewConnection(
-    connectionRow,
-    message.data.gameCode,
-    ddbClient,
-    apiClient,
-  );
+  await notifyNewConnection(connectionRow, ddbClient, apiClient);
 
   await sendFullGame(
     event.requestContext.connectionId,
