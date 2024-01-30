@@ -2,7 +2,9 @@ import { ApiGatewayManagementApiClient } from "@aws-sdk/client-apigatewaymanagem
 import { DynamoDB } from "@aws-sdk/client-dynamodb";
 import type { APIGatewayProxyHandler } from "aws-lambda";
 
+import type { ConnectionRecord } from "../db/dynamodb/connection";
 import { addConnectionToGame } from "../utils/addConnectionToGame";
+import { notifyNewConnection } from "../utils/notifyNewConnection";
 import { sendFullGame } from "../utils/sendFullGame";
 import {
   joinGameMessageSchema,
@@ -29,9 +31,12 @@ export const main: APIGatewayProxyHandler = async (event) => {
       console.error(error.message);
       return { statusCode: 400, body: error.message };
     }
+    return { statusCode: 500, body: "Internal Server Error" };
   }
+
+  let connectionRow: ConnectionRecord;
   try {
-    await addConnectionToGame(
+    connectionRow = await addConnectionToGame(
       event.requestContext.connectionId,
       message.data.gameCode,
       message.data.name,
@@ -42,6 +47,7 @@ export const main: APIGatewayProxyHandler = async (event) => {
       console.log("No such game");
       return { statusCode: 400, body: "No such game" };
     }
+    return { statusCode: 500, body: "Internal Server Error" };
   }
 
   if (apiClient == null) {
@@ -49,6 +55,13 @@ export const main: APIGatewayProxyHandler = async (event) => {
       endpoint: `https://${event.requestContext.domainName}/${event.requestContext.stage}`,
     });
   }
+
+  await notifyNewConnection(
+    connectionRow,
+    message.data.gameCode,
+    ddbClient,
+    apiClient,
+  );
 
   await sendFullGame(
     event.requestContext.connectionId,

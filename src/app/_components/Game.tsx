@@ -1,8 +1,14 @@
 "use client";
 
 import { env } from "~/env";
-import type { ConnectionRecord } from "~/server/db/dynamodb/connection";
-import type { GameMetaRecord } from "~/server/db/dynamodb/gameMeta";
+import {
+  nameMaxLength,
+  type ConnectionRecord,
+} from "~/server/db/dynamodb/connection";
+import {
+  gameCodeLength,
+  type GameMetaRecord,
+} from "~/server/db/dynamodb/gameMeta";
 import type { ImageRecord } from "~/server/db/dynamodb/image";
 import type { AnyMessage } from "~/server/websocket/messageschema/client2server/any";
 import {
@@ -10,6 +16,8 @@ import {
   type AnyMessage as AnyServer2ClientMessage,
 } from "~/server/websocket/messageschema/server2client/any";
 import React from "react";
+
+import { Avatar } from "./Avatar";
 
 export function Game() {
   const [ownedGame, setOwnedGame] = React.useState<boolean>();
@@ -82,6 +90,8 @@ export function Game() {
           setImageRecords(newImageRecords);
         } else if (message.action === "imageGenerated") {
           setImageRecords((prev) => [...prev, message.data]);
+        } else if (message.action === "newConnection") {
+          setConnectionRecords((prev) => [...prev, message.data]);
         }
       };
       return wsNew;
@@ -107,8 +117,6 @@ export function Game() {
     },
     [ws],
   );
-
-  console.log("gameMetaRecord", gameMetaRecord);
 
   let content;
   if (gameMetaRecord == null) {
@@ -200,7 +208,7 @@ export function Game() {
             className="input input-bordered input-primary input-lg w-full max-w-xs"
             value={gameCode}
             onChange={(e) => {
-              setGameCode(e.target.value);
+              setGameCode(e.target.value.slice(0, gameCodeLength));
             }}
           />
           <input
@@ -208,7 +216,7 @@ export function Game() {
             className="input input-bordered input-primary input-lg w-full max-w-xs"
             value={name}
             onChange={(e) => {
-              setName(e.target.value);
+              setName(e.target.value.slice(0, nameMaxLength));
             }}
           />
           <button
@@ -246,6 +254,11 @@ export function Game() {
           >
             Proceed
           </button>
+          <div className="flex gap-3">
+            {connectionRecords.map((connectionRecord) => (
+              <Avatar key={connectionRecord.id} name={connectionRecord.name} />
+            ))}
+          </div>
         </>
       );
     } else {
@@ -257,6 +270,11 @@ export function Game() {
           <h1 className="text-xl font-extrabold sm:text-3xl">
             Wait for the game owner to proceed...
           </h1>
+          <div className="flex gap-3">
+            {connectionRecords.map((connectionRecord) => (
+              <Avatar key={connectionRecord.id} name={connectionRecord.name} />
+            ))}
+          </div>
         </>
       );
     }

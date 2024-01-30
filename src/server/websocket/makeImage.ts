@@ -41,6 +41,7 @@ export const main: APIGatewayProxyHandler = async (event) => {
       console.error(error.message);
       return { statusCode: 400, body: error.message };
     }
+    return { statusCode: 500, body: "Internal Server Error" };
   }
 
   // get connection from db

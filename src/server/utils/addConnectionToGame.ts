@@ -44,4 +44,6 @@ export async function addConnectionToGame(
       Item: marshall(newConnection),
     }),
   );
+
+  return newConnection;
 }
