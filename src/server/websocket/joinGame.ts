@@ -5,6 +5,7 @@ import type { APIGatewayProxyHandler } from "aws-lambda";
 import type { ConnectionRecord } from "../db/dynamodb/connection";
 import { addConnectionToGame } from "../utils/addConnectionToGame";
 import { notifyNewConnection } from "../utils/notifyNewConnection";
+import { notifyYourConnection } from "../utils/notifyYourConnection";
 import { sendFullGame } from "../utils/sendFullGame";
 import {
   joinGameMessageSchema,
@@ -56,6 +57,7 @@ export const main: APIGatewayProxyHandler = async (event) => {
     });
   }
 
+  await notifyYourConnection(connectionRow, apiClient);
   await notifyNewConnection(connectionRow, ddbClient, apiClient);
 
   await sendFullGame(

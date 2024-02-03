@@ -9,35 +9,51 @@ import {
   gameCodeLength,
   type GameMetaRecord,
 } from "~/server/db/dynamodb/gameMeta";
-import type { ImageRecord } from "~/server/db/dynamodb/image";
+import {
+  promptImageMaxLength,
+  type ImageRecord,
+} from "~/server/db/dynamodb/image";
 import type { AnyMessage } from "~/server/websocket/messageschema/client2server/any";
 import {
   anyMessageSchema,
   type AnyMessage as AnyServer2ClientMessage,
 } from "~/server/websocket/messageschema/server2client/any";
+import Image from "next/image";
 import React from "react";
 
 import { Avatar } from "./Avatar";
 
 export function Game() {
-  const [ownedGame, setOwnedGame] = React.useState<boolean>();
-  const [gameMetaRecord, setGameMetaRecord] = React.useState<GameMetaRecord>();
-  const [connectionRecords, setConnectionRecords] = React.useState<
-    ConnectionRecord[]
-  >([]);
-  const [imageRecords, setImageRecords] = React.useState<ImageRecord[]>([]);
-  const [name, setName] = React.useState<string>("");
-  const [gameCode, setGameCode] = React.useState<string>("");
-
-  const wsRef = React.useRef<WebSocket>();
-  const [ws, setWs] = React.useState<WebSocket>();
-
   const isMounted = React.useRef(true);
   React.useEffect(() => {
     return () => {
       isMounted.current = false;
     };
   }, []);
+
+  const [ownedGame, setOwnedGame] = React.useState<boolean>();
+  const [gameMetaRecord, setGameMetaRecord] = React.useState<GameMetaRecord>();
+  const [connectionRecords, setConnectionRecords] = React.useState<
+    ConnectionRecord[]
+  >([]);
+  const [myConnectionRecord, setMyConnectionRecord] =
+    React.useState<ConnectionRecord>();
+  const [imageRecords, setImageRecords] = React.useState<ImageRecord[]>([]);
+  const [name, setName] = React.useState<string>("");
+  const [gameCode, setGameCode] = React.useState<string>("");
+  const [promptImage, setPromptImage] = React.useState<string>("");
+
+  const wsRef = React.useRef<WebSocket>();
+  const [ws, setWs] = React.useState<WebSocket>();
+
+  const myImageRecord =
+    myConnectionRecord != null
+      ? imageRecords.filter(
+          (x) => x.connectionId === myConnectionRecord?.id.split("#")[1],
+        )[0]
+      : undefined;
+
+  const [errorMessage, setErrorMessage] = React.useState<string | undefined>();
 
   React.useEffect(() => {
     const openWebSocket = () => {
@@ -73,11 +89,14 @@ export function Game() {
           console.error("ws message not valid", error);
           return;
         }
-        if (message.action === "fullGame") {
+        if ("message" in message) {
+          // error message
+          console.error(message.message);
+          setErrorMessage(message.message);
+        } else if (message.action === "fullGame") {
           const newImageRecords: ImageRecord[] = [];
           const newConnectionRecords: ConnectionRecord[] = [];
           message.data.forEach((row) => {
-            console.log(row);
             if ("url" in row) {
               newImageRecords.push(row);
             } else if ("name" in row) {
@@ -96,6 +115,10 @@ export function Game() {
           setConnectionRecords((prev) =>
             prev.filter((x) => x.id !== message.data.id),
           );
+        } else if (message.action === "progressGame") {
+          setGameMetaRecord(message.data);
+        } else if (message.action === "yourConnection") {
+          setMyConnectionRecord(message.data);
         }
       };
       return wsNew;
@@ -130,7 +153,7 @@ export function Game() {
           <h1 className="text-5xl font-extrabold tracking-tight sm:text-[5rem]">
             Chimpin
           </h1>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-8">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 md:gap-8 justify-items-center w-full">
             <button
               className="btn btn-primary btn-lg"
               onClick={() => {
@@ -139,6 +162,7 @@ export function Game() {
             >
               Join Game
             </button>
+            <div className="divider sm:divider-horizontal w-full">OR</div>
             <button
               className="btn btn-secondary btn-lg"
               onClick={() => {
@@ -173,7 +197,7 @@ export function Game() {
             className="input input-bordered input-primary input-lg w-full max-w-xs"
             value={name}
             onChange={(e) => {
-              setName(e.target.value);
+              setName(e.target.value.slice(0, nameMaxLength));
             }}
           />
           <button
@@ -237,7 +261,7 @@ export function Game() {
         </>
       );
     }
-  } else {
+  } else if (gameMetaRecord.status === "lobby") {
     if (ownedGame) {
       content = (
         <>
@@ -282,11 +306,73 @@ export function Game() {
         </>
       );
     }
+  } else if (gameMetaRecord.status === "playing") {
+    content = (
+      <div className="grid grid-rows-[2fr_1fr]">
+        <div className="bg-red-500 grid">
+          {imageRecords
+            .filter((imageRecord) => myImageRecord?.id !== imageRecord.id)
+            .map((imageRecord) => (
+              <Image
+                src={imageRecord.url}
+                alt="another player's image"
+                key={imageRecord.id}
+              />
+            ))}
+          <Image src={myImageRecord?.url} alt="your image" />
+        </div>
+        <div className="bg-blue-500">
+          <textarea
+            className="textarea textarea-primary"
+            placeholder="Your image prompt..."
+            value={promptImage}
+            onChange={(e) => {
+              setPromptImage(e.target.value.slice(0, promptImageMaxLength));
+            }}
+          ></textarea>
+          <button
+            className="btn btn-primary btn-lg"
+            onClick={() => {
+              sendMessage({
+                action: "makeImage",
+                data: { promptImage },
+              });
+            }}
+          >
+            Make Image
+          </button>
+        </div>
+      </div>
+    );
+    connectionRecords.map((connectionRecord) => (
+      <Avatar key={connectionRecord.id} name={connectionRecord.name} />
+    ));
   }
 
   return (
-    <div className="container flex flex-col items-center justify-center gap-12 px-4 py-16 ">
+    <div className="container flex flex-col items-center justify-center gap-12 px-4 py-16 max-w-[512px]">
       {content}
+      <div
+        role="alert"
+        className={
+          "alert alert-error" + (errorMessage == null ? " hidden" : "")
+        }
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className="stroke-current shrink-0 h-6 w-6"
+          fill="none"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="2"
+            d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
+          />
+        </svg>
+        <span>{errorMessage}</span>
+      </div>
     </div>
   );
 }

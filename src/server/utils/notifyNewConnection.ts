@@ -30,10 +30,7 @@ export async function notifyNewConnection(
     const existingConnectionRecord = unmarshall(item) as ConnectionRecord;
     const connectionId = existingConnectionRecord.id.split("#")[1];
     try {
-      console.log(
-        "Sending message to a connection",
-        existingConnectionRecord.id.split("#")[1],
-      );
+      console.log("Sending message to a connection", connectionId);
       const fullGameMessage: NewConnectionMessage = {
         action: "newConnection",
         data: connectionRecord,

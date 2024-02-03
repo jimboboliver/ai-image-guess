@@ -81,6 +81,7 @@ export const main: APIGatewayProxyHandler = async (event) => {
     id: `image#${uuidv4()}`,
     url: response.data[0]?.url,
     connectionId: event.requestContext.connectionId,
+    promptImage: message.data.promptImage,
   };
   await ddbClient.send(
     new PutItemCommand({

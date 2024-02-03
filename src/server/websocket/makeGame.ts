@@ -17,7 +17,7 @@ const ddbClient = new DynamoDB();
 let apiClient: ApiGatewayManagementApiClient;
 
 function generateRandomCode(length = 4): string {
-  const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  const characters = "ABCDEFGHJKMNPQRSTUVWXYZ123456789";
   let result = "";
   for (let i = 0; i < length; i++) {
     result += characters.charAt(Math.floor(Math.random() * characters.length));
