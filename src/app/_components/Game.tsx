@@ -236,7 +236,9 @@ export function Game() {
             className="input input-bordered input-primary input-lg w-full max-w-xs"
             value={gameCode}
             onChange={(e) => {
-              setGameCode(e.target.value.slice(0, gameCodeLength));
+              setGameCode(
+                e.target.value.toUpperCase().slice(0, gameCodeLength),
+              );
             }}
           />
           <input
@@ -310,16 +312,33 @@ export function Game() {
     content = (
       <div className="grid grid-rows-[2fr_1fr]">
         <div className="bg-red-500 grid">
-          {imageRecords
-            .filter((imageRecord) => myImageRecord?.id !== imageRecord.id)
-            .map((imageRecord) => (
-              <Image
-                src={imageRecord.url}
-                alt="another player's image"
-                key={imageRecord.id}
-              />
-            ))}
-          <Image src={myImageRecord?.url} alt="your image" />
+          {connectionRecords
+            .filter(
+              (connectionRecord) =>
+                myConnectionRecord?.id !== connectionRecord.id,
+            )
+            .map((connectionRecord) => {
+              const imageRecord = imageRecords.filter(
+                (imageRecord) =>
+                  imageRecord.connectionId ===
+                  connectionRecord.id.split("#")[1],
+              )[0];
+              return (
+                <Image
+                  src={imageRecord?.url}
+                  alt={`${myConnectionRecord.name}'s image`}
+                  key={connectionRecord.id}
+                  width={128}
+                  height={128}
+                />
+              );
+            })}
+          <Image
+            src={myImageRecord?.url}
+            alt="your image"
+            width={256}
+            height={256}
+          />
         </div>
         <div className="bg-blue-500">
           <textarea

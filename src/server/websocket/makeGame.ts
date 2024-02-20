@@ -6,6 +6,7 @@ import { Table } from "sst/node/table";
 
 import type { GameMetaRecord } from "../db/dynamodb/gameMeta";
 import { addConnectionToGame } from "../utils/addConnectionToGame";
+import { notifyYourConnection } from "../utils/notifyYourConnection";
 import { sendFullGame } from "../utils/sendFullGame";
 import {
   makeGameMessageSchema,
@@ -68,12 +69,13 @@ export const main: APIGatewayProxyHandler = async (event) => {
     });
   }
 
-  await addConnectionToGame(
+  const connectionRecord = await addConnectionToGame(
     event.requestContext.connectionId,
     gameCode,
     message.data.name,
     ddbClient,
   );
+  await notifyYourConnection(connectionRecord, apiClient);
 
   await sendFullGame(
     event.requestContext.connectionId,
