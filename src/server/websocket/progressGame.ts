@@ -73,9 +73,21 @@ export const main: APIGatewayProxyHandler = async (event) => {
   if (gameRecord == null) {
     throw new Error("No game");
   }
-  gameRecord.status = {
-    S: message.data.status,
+  let updateExpression = "SET #status = :status";
+  const expressionAttributeNames: Record<string, string> = {
+    "#status": "status",
   };
+  const expressionAttributeValues: Record<string, string | number[]> = {
+    ":status": message.data.status,
+  };
+  const gameRow = unmarshall(gameRecord) as GameMetaRecord;
+  gameRow.status = message.data.status;
+  if (message.data.status === "playing") {
+    gameRow.timestamps = [Date.now() / 1000 + 60, Date.now() / 1000 + 120];
+    updateExpression += ", #timestamps = :timestamps";
+    expressionAttributeNames["#timestamps"] = "timestamps";
+    expressionAttributeValues[":timestamps"] = gameRow.timestamps;
+  }
   await ddbClient.send(
     new UpdateItemCommand({
       TableName: Table.chimpin.tableName,
@@ -83,13 +95,9 @@ export const main: APIGatewayProxyHandler = async (event) => {
         game: connectionRecord.game,
         id: "meta",
       }),
-      UpdateExpression: "SET #status = :status",
-      ExpressionAttributeNames: {
-        "#status": "status",
-      },
-      ExpressionAttributeValues: marshall({
-        ":status": message.data.status,
-      }),
+      UpdateExpression: updateExpression,
+      ExpressionAttributeNames: expressionAttributeNames,
+      ExpressionAttributeValues: marshall(expressionAttributeValues),
     }),
   );
   if (apiClient == null) {
@@ -99,7 +107,7 @@ export const main: APIGatewayProxyHandler = async (event) => {
   }
   await sendMessageToAllGameConnections(
     connectionRecord.game.split("#")[1]!,
-    { data: unmarshall(gameRecord) as GameMetaRecord, action: "progressGame" },
+    { data: gameRow, action: "progressGame" },
     ddbClient,
     apiClient,
   );

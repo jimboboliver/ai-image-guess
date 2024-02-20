@@ -51,6 +51,7 @@ export const main: APIGatewayProxyHandler = async (event) => {
     status: "lobby",
     gameCode: gameCode,
     ownerConnectionId: event.requestContext.connectionId,
+    gameType: "chimpin",
   };
 
   console.log("Creating game", gameMetaRow);

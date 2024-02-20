@@ -43,6 +43,16 @@ export function Game() {
   const [gameCode, setGameCode] = React.useState<string>("");
   const [promptImage, setPromptImage] = React.useState<string>("");
 
+  const [currentTime, setCurrentTime] = React.useState<number>();
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(Date.now() / 1000);
+    }, 1000);
+    return () => {
+      clearInterval(interval);
+    };
+  }, []);
+
   const wsRef = React.useRef<WebSocket>();
   const [ws, setWs] = React.useState<WebSocket>();
 
@@ -76,14 +86,13 @@ export function Game() {
         console.log("ws error", e);
       };
       wsNew.onmessage = (e) => {
-        console.log("ws message", e.data);
         if (typeof e.data !== "string") {
           console.error("ws message data not string");
           return;
         }
         const message = JSON.parse(e.data) as AnyServer2ClientMessage;
+        console.log("ws message", JSON.stringify(message, null, 2));
         try {
-          console.log("message", JSON.stringify(message, null, 2));
           anyMessageSchema.parse(message);
         } catch (error) {
           console.error("ws message not valid", error);
@@ -308,7 +317,10 @@ export function Game() {
         </>
       );
     }
-  } else if (gameMetaRecord.status === "playing") {
+  } else if (
+    gameMetaRecord.status === "playing" &&
+    (currentTime ?? 0) < (gameMetaRecord.timestamps?.[0] ?? 0)
+  ) {
     content = (
       <div className="grid grid-rows-[1fr_1fr_1fr]">
         <div className="grid auto-rows-auto grid-cols-2">
@@ -340,7 +352,17 @@ export function Game() {
           width={256}
           height={256}
         />
-        <div className="bg-blue-500 grid grid-flow-row">
+        <div className="grid grid-flow-row">
+          <span className="countdown font-mono text-6xl">
+            <span
+              style={
+                {
+                  "--value":
+                    (gameMetaRecord.timestamps?.[0] ?? 0) - (currentTime ?? 0),
+                } as React.CSSProperties
+              }
+            ></span>
+          </span>
           <textarea
             className="textarea textarea-primary"
             placeholder="Your image prompt..."
