@@ -310,8 +310,8 @@ export function Game() {
     }
   } else if (gameMetaRecord.status === "playing") {
     content = (
-      <div className="grid grid-rows-[2fr_1fr]">
-        <div className="bg-red-500 grid">
+      <div className="grid grid-rows-[1fr_1fr_1fr]">
+        <div className="grid auto-rows-auto grid-cols-2">
           {connectionRecords
             .filter(
               (connectionRecord) =>
@@ -326,21 +326,21 @@ export function Game() {
               return (
                 <Image
                   src={imageRecord?.url}
-                  alt={`${myConnectionRecord.name}'s image`}
+                  alt={`${connectionRecord.name}'s image`}
                   key={connectionRecord.id}
                   width={128}
                   height={128}
                 />
               );
             })}
-          <Image
-            src={myImageRecord?.url}
-            alt="your image"
-            width={256}
-            height={256}
-          />
         </div>
-        <div className="bg-blue-500">
+        <Image
+          src={myImageRecord?.url}
+          alt="your image"
+          width={256}
+          height={256}
+        />
+        <div className="bg-blue-500 grid grid-flow-row">
           <textarea
             className="textarea textarea-primary"
             placeholder="Your image prompt..."
@@ -369,7 +369,7 @@ export function Game() {
   }
 
   return (
-    <div className="container flex flex-col items-center justify-center gap-12 px-4 py-16 max-w-[512px]">
+    <div className="container flex flex-col items-center justify-center gap-12 px-4 py-4 max-w-[512px]">
       {content}
       <div
         role="alert"
