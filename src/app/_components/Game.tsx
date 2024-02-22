@@ -414,10 +414,11 @@ export function Game() {
                   width={128}
                   height={128}
                   onClick={() => {
-                    if (imageRecord?.id != null) {
+                    const imageId = imageRecord?.id.split("#")[1];
+                    if (imageId != null) {
                       sendMessage({
                         action: "vote",
-                        data: { imageId: imageRecord.id },
+                        data: { imageId: imageId },
                       });
                     }
                   }}
@@ -431,10 +432,11 @@ export function Game() {
           width={256}
           height={256}
           onClick={() => {
-            if (myImageRecord?.id != null) {
+            const imageId = myImageRecord?.id.split("#")[1];
+            if (imageId != null) {
               sendMessage({
                 action: "vote",
-                data: { imageId: myImageRecord.id },
+                data: { imageId: imageId },
               });
             }
           }}
@@ -444,8 +446,9 @@ export function Game() {
             <span
               style={
                 {
-                  "--value":
+                  "--value": Math.floor(
                     (gameMetaRecord.timestamps?.[1] ?? 0) - (currentTime ?? 0),
+                  ),
                 } as React.CSSProperties
               }
             ></span>
