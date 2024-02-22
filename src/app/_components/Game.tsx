@@ -461,6 +461,89 @@ export function Game() {
     connectionRecords.map((connectionRecord) => (
       <Avatar key={connectionRecord.id} name={connectionRecord.name} />
     ));
+  } else if (
+    gameMetaRecord.status === "playing" &&
+    (currentTime ?? 0) >= (gameMetaRecord.timestamps?.[1] ?? 0)
+  ) {
+    content = (
+      <div className="grid grid-rows-[1fr_1fr_1fr]">
+        <div className="grid auto-rows-auto grid-cols-2">
+          {connectionRecords
+            .filter(
+              (connectionRecord) =>
+                myConnectionRecord?.id !== connectionRecord.id,
+            )
+            .map((connectionRecord) => {
+              const imageRecord = imageRecords.filter(
+                (imageRecord) =>
+                  imageRecord.connectionId ===
+                  connectionRecord.id.split("#")[1],
+              )[0];
+              return (
+                <Image
+                  src={imageRecord?.url}
+                  alt={`${connectionRecord.name}'s image`}
+                  key={connectionRecord.id}
+                  width={128}
+                  height={128}
+                  onClick={() => {
+                    const imageId = imageRecord?.id.split("#")[1];
+                    if (imageId != null) {
+                      sendMessage({
+                        action: "vote",
+                        data: { imageId: imageId },
+                      });
+                    }
+                  }}
+                />
+              );
+            })}
+        </div>
+        <Image
+          src={myImageRecord?.url}
+          alt="your image"
+          width={256}
+          height={256}
+          onClick={() => {
+            const imageId = myImageRecord?.id.split("#")[1];
+            if (imageId != null) {
+              sendMessage({
+                action: "vote",
+                data: { imageId: imageId },
+              });
+            }
+          }}
+        />
+        <div className="grid grid-flow-row">
+          <span className="countdown font-mono text-6xl">
+            <span
+              style={
+                {
+                  "--value": Math.floor(
+                    (gameMetaRecord.timestamps?.[1] ?? 0) - (currentTime ?? 0),
+                  ),
+                } as React.CSSProperties
+              }
+            ></span>
+          </span>
+          <span>We have a winner!</span>
+          <button
+            className="btn btn-primary btn-lg"
+            onClick={() => {
+              sendMessage({
+                action: "progressGame",
+                data: { status: "lobby" },
+              });
+            }}
+          >
+            Back to lobby
+          </button>
+        </div>
+      </div>
+    );
+    connectionRecords.map((connectionRecord) => (
+      <Avatar key={connectionRecord.id} name={connectionRecord.name} />
+    ));
   }
 
   return (
