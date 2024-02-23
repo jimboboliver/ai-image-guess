@@ -208,6 +208,7 @@ export function Game() {
             onChange={(e) => {
               setName(e.target.value.slice(0, nameMaxLength));
             }}
+            aria-autocomplete="none"
           />
           <button
             className="btn btn-primary btn-lg"
@@ -249,6 +250,7 @@ export function Game() {
                 e.target.value.toUpperCase().slice(0, gameCodeLength),
               );
             }}
+            aria-autocomplete="none"
           />
           <input
             placeholder="Enter your name"
@@ -257,6 +259,7 @@ export function Game() {
             onChange={(e) => {
               setName(e.target.value.slice(0, nameMaxLength));
             }}
+            aria-autocomplete="none"
           />
           <button
             className="btn btn-primary btn-lg"
