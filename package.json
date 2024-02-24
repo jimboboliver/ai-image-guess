@@ -10,7 +10,7 @@
     "diff:d": "sst diff --stage dev",
     "deploy:d": "sst deploy --stage dev",
     "dev": "next dev",
-    "lint": "next lint",
+    "lint": "next lint && tsc --noEmit",
     "start": "next start",
     "makeImage": "dotenv tsx ./src/server/websocket/makeImage",
     "progressGame": "dotenv tsx ./src/server/websocket/progressGame"
