@@ -12,7 +12,13 @@ let apiClient: ApiGatewayManagementApiClient;
 export const main: APIGatewayProxyHandler = async (event) => {
   console.log(event);
   if (event.requestContext.connectionId == null) {
-    return { statusCode: 400, body: "Missing connectionId" };
+    return {
+      statusCode: 500,
+      body: JSON.stringify({
+        action: "serverError",
+        data: { message: "Internal Server Error" },
+      }),
+    };
   }
 
   const deletedConnectionRecords = await deleteConnection(
@@ -29,5 +35,5 @@ export const main: APIGatewayProxyHandler = async (event) => {
     await notifyDeleteConnection(deletedConnectionRecord, ddbClient, apiClient);
   }
 
-  return { statusCode: 200, body: "Disconnected" };
+  return { statusCode: 200, body: JSON.stringify({ action: "serverSuccess" }) };
 };

@@ -27,11 +27,14 @@ const api = new OpenAI({ apiKey: env.API_KEY_OPENAI });
 
 export const main: APIGatewayProxyHandler = async (event) => {
   console.log(event);
-  if (event.requestContext.connectionId == null) {
-    throw new Error("No connection");
-  }
-  if (event.body == null) {
-    throw new Error("No body");
+  if (event.body == null || event.requestContext.connectionId == null) {
+    return {
+      statusCode: 500,
+      body: JSON.stringify({
+        action: "serverError",
+        data: { message: "Internal Server Error" },
+      }),
+    };
   }
   const message = JSON.parse(event.body) as MakeImageMessage;
   try {
@@ -39,9 +42,21 @@ export const main: APIGatewayProxyHandler = async (event) => {
   } catch (error) {
     if (error instanceof Error) {
       console.error(error.message);
-      return { statusCode: 400, body: error.message };
+      return {
+        statusCode: 400,
+        body: JSON.stringify({
+          action: "serverError",
+          data: { message: error.message },
+        }),
+      };
     }
-    return { statusCode: 500, body: "Internal Server Error" };
+    return {
+      statusCode: 500,
+      body: JSON.stringify({
+        action: "serverError",
+        data: { message: "Internal Server Error" },
+      }),
+    };
   }
 
   // get connection from db
@@ -56,7 +71,13 @@ export const main: APIGatewayProxyHandler = async (event) => {
     }),
   );
   if (connectionRecords.Items == null || connectionRecords.Items.length === 0) {
-    throw new Error("No connection");
+    return {
+      statusCode: 500,
+      body: JSON.stringify({
+        action: "serverError",
+        data: { message: "Internal Server Error" },
+      }),
+    };
   }
   const connectionRecord = unmarshall(
     connectionRecords.Items[0]!,
@@ -73,7 +94,13 @@ export const main: APIGatewayProxyHandler = async (event) => {
     response.data.length === 0 ||
     response.data[0]?.url == null
   ) {
-    throw new Error("No image");
+    return {
+      statusCode: 500,
+      body: JSON.stringify({
+        action: "serverError",
+        data: { message: "Internal Server Error" },
+      }),
+    };
   }
   // put image record into db
   const imageRecord: ImageRecord = {
@@ -96,9 +123,9 @@ export const main: APIGatewayProxyHandler = async (event) => {
   }
   await sendMessageToAllGameConnections(
     connectionRecord.game.split("#")[1]!,
-    { data: imageRecord, action: "imageGenerated" },
+    { data: { imageRecord, connectionRecord }, action: "imageGenerated" },
     ddbClient,
     apiClient,
   );
-  return { statusCode: 200, body: "Made image" };
+  return { statusCode: 200, body: JSON.stringify({ action: "serverSuccess" }) };
 };

@@ -18,11 +18,14 @@ let apiClient: ApiGatewayManagementApiClient;
 
 export const main: APIGatewayProxyHandler = async (event) => {
   console.log(event);
-  if (event.requestContext.connectionId == null) {
-    throw new Error("No connection");
-  }
-  if (event.body == null) {
-    throw new Error("No body");
+  if (event.body == null || event.requestContext.connectionId == null) {
+    return {
+      statusCode: 500,
+      body: JSON.stringify({
+        action: "serverError",
+        data: { message: "Internal Server Error" },
+      }),
+    };
   }
   const message = JSON.parse(event.body) as JoinGameMessage;
   try {
@@ -30,9 +33,21 @@ export const main: APIGatewayProxyHandler = async (event) => {
   } catch (error) {
     if (error instanceof Error) {
       console.error(error.message);
-      return { statusCode: 400, body: error.message };
+      return {
+        statusCode: 400,
+        body: JSON.stringify({
+          action: "serverError",
+          data: { message: error.message },
+        }),
+      };
     }
-    return { statusCode: 500, body: "Internal Server Error" };
+    return {
+      statusCode: 500,
+      body: JSON.stringify({
+        action: "serverError",
+        data: { message: "Internal Server Error" },
+      }),
+    };
   }
 
   let connectionRow: ConnectionRecord;
@@ -46,9 +61,21 @@ export const main: APIGatewayProxyHandler = async (event) => {
   } catch (error) {
     if (error instanceof Error && error.message === "No such game") {
       console.log("No such game");
-      return { statusCode: 400, body: "No such game" };
+      return {
+        statusCode: 400,
+        body: JSON.stringify({
+          action: "serverError",
+          data: { message: "No such game" },
+        }),
+      };
     }
-    return { statusCode: 500, body: "Internal Server Error" };
+    return {
+      statusCode: 500,
+      body: JSON.stringify({
+        action: "serverError",
+        data: { message: "Internal Server Error" },
+      }),
+    };
   }
 
   if (apiClient == null) {
@@ -67,5 +94,5 @@ export const main: APIGatewayProxyHandler = async (event) => {
     apiClient,
   );
 
-  return { statusCode: 200, body: "Joined game" };
+  return { statusCode: 200, body: JSON.stringify({ action: "serverSuccess" }) };
 };

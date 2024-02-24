@@ -1,10 +1,10 @@
 import { z } from "zod";
 
-import { gameRecord } from "./game";
+import { baseRecord } from "./base";
 
 export const promptImageMaxLength = 256;
 
-export const imageRecordSchema = gameRecord.extend({
+export const imageRecordSchema = baseRecord.extend({
   url: z.string(),
   connectionId: z.string(),
   votes: z.number().optional(),

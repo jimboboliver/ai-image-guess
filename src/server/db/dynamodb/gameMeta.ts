@@ -1,14 +1,19 @@
 import { z } from "zod";
 
-import { gameRecord } from "./game";
+import { baseRecord } from "./base";
 
 export const gameCodeLength = 4;
 
-export const gameMetaRecordSchema = gameRecord.extend({
+export const gameMetaRecordSchema = baseRecord.extend({
   status: z.enum(["lobby", "playing", "finished"]),
   gameCode: z.string().length(gameCodeLength),
   ownerConnectionId: z.string(),
-  timestamps: z.array(z.number()).optional(),
+  timestamps: z
+    .object({
+      timestampEndPlay: z.number(),
+      timestampEndVote: z.number(),
+    })
+    .optional(),
   gameType: z.string(),
 });
 

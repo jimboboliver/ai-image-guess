@@ -1,4 +1,5 @@
 import {
+  GoneException,
   PostToConnectionCommand,
   type ApiGatewayManagementApiClient,
 } from "@aws-sdk/client-apigatewaymanagementapi";
@@ -43,7 +44,7 @@ export async function sendMessageToAllGameConnections(
         }),
       );
     } catch (e) {
-      if (e.statusCode === 410) {
+      if (e instanceof GoneException) {
         console.log("Connection was closed");
         if (connectionId != null) {
           await deleteConnection(connectionId);

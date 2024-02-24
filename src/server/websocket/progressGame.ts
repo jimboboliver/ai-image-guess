@@ -23,11 +23,14 @@ let apiClient: ApiGatewayManagementApiClient;
 
 export const main: APIGatewayProxyHandler = async (event) => {
   console.log(event);
-  if (event.requestContext.connectionId == null) {
-    throw new Error("No connection");
-  }
-  if (event.body == null) {
-    throw new Error("No body");
+  if (event.body == null || event.requestContext.connectionId == null) {
+    return {
+      statusCode: 500,
+      body: JSON.stringify({
+        action: "serverError",
+        data: { message: "Internal Server Error" },
+      }),
+    };
   }
   const message = JSON.parse(event.body) as ProgressGameMessage;
   try {
@@ -35,9 +38,21 @@ export const main: APIGatewayProxyHandler = async (event) => {
   } catch (error) {
     if (error instanceof Error) {
       console.error(error.message);
-      return { statusCode: 400, body: error.message };
+      return {
+        statusCode: 400,
+        body: JSON.stringify({
+          action: "serverError",
+          data: { message: error.message },
+        }),
+      };
     }
-    return { statusCode: 500, body: "Internal Server Error" };
+    return {
+      statusCode: 500,
+      body: JSON.stringify({
+        action: "serverError",
+        data: { message: "Internal Server Error" },
+      }),
+    };
   }
 
   // get connection from db
@@ -52,7 +67,13 @@ export const main: APIGatewayProxyHandler = async (event) => {
     }),
   );
   if (connectionRecords.Items == null || connectionRecords.Items.length === 0) {
-    throw new Error("No connection");
+    return {
+      statusCode: 500,
+      body: JSON.stringify({
+        action: "serverError",
+        data: { message: "Internal Server Error" },
+      }),
+    };
   }
   const connectionRecord = unmarshall(
     connectionRecords.Items[0]!,
@@ -71,19 +92,28 @@ export const main: APIGatewayProxyHandler = async (event) => {
     )
   ).Item;
   if (gameRecord == null) {
-    throw new Error("No game");
+    return {
+      statusCode: 500,
+      body: JSON.stringify({
+        action: "serverError",
+        data: { message: "Internal Server Error" },
+      }),
+    };
   }
   let updateExpression = "SET #status = :status";
   const expressionAttributeNames: Record<string, string> = {
     "#status": "status",
   };
-  const expressionAttributeValues: Record<string, string | number[]> = {
+  const expressionAttributeValues: Record<string, unknown> = {
     ":status": message.data.status,
   };
   const gameRow = unmarshall(gameRecord) as GameMetaRecord;
   gameRow.status = message.data.status;
   if (message.data.status === "playing") {
-    gameRow.timestamps = [Date.now() / 1000 + 60, Date.now() / 1000 + 120];
+    gameRow.timestamps = {
+      timestampEndPlay: Date.now() / 1000 + 30,
+      timestampEndVote: Date.now() / 1000 + 60,
+    };
     updateExpression += ", #timestamps = :timestamps";
     expressionAttributeNames["#timestamps"] = "timestamps";
     expressionAttributeValues[":timestamps"] = gameRow.timestamps;
@@ -111,5 +141,5 @@ export const main: APIGatewayProxyHandler = async (event) => {
     ddbClient,
     apiClient,
   );
-  return { statusCode: 200, body: "Made image" };
+  return { statusCode: 200, body: JSON.stringify({ action: "serverSuccess" }) };
 };

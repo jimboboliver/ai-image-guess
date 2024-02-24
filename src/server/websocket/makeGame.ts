@@ -28,21 +28,37 @@ function generateRandomCode(length = 4): string {
 
 export const main: APIGatewayProxyHandler = async (event) => {
   console.log(event);
-  if (event.requestContext.connectionId == null) {
-    throw new Error("No connection");
+  if (event.body == null || event.requestContext.connectionId == null) {
+    return {
+      statusCode: 500,
+      body: JSON.stringify({
+        action: "serverError",
+        data: { message: "Internal Server Error" },
+      }),
+    };
   }
-  if (event.body == null) {
-    throw new Error("No body");
-  }
+
   const message = JSON.parse(event.body) as MakeGameMessage;
   try {
     makeGameMessageSchema.parse(message);
   } catch (error) {
     if (error instanceof Error) {
       console.error(error.message);
-      return { statusCode: 400, body: error.message };
+      return {
+        statusCode: 400,
+        body: JSON.stringify({
+          action: "serverError",
+          data: { message: error.message },
+        }),
+      };
     }
-    return { statusCode: 500, body: "Internal Server Error" };
+    return {
+      statusCode: 500,
+      body: JSON.stringify({
+        action: "serverError",
+        data: { message: "Internal Server Error" },
+      }),
+    };
   }
   const gameCode = generateRandomCode();
   const gameMetaRow: GameMetaRecord = {
@@ -85,5 +101,5 @@ export const main: APIGatewayProxyHandler = async (event) => {
     apiClient,
   );
 
-  return { statusCode: 200, body: JSON.stringify({ message: "Started game" }) };
+  return { statusCode: 200, body: JSON.stringify({ action: "serverSuccess" }) };
 };

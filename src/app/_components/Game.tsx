@@ -23,6 +23,20 @@ import React from "react";
 
 import { Avatar } from "./Avatar";
 
+function uniqueObjArray<T extends Record<string, unknown>>(
+  arr: T[],
+  newElement: T,
+) {
+  const arrCopy = arr.slice();
+  const index = arrCopy.findIndex((x) => x.id === newElement.id);
+  if (index === -1) {
+    arrCopy.push(newElement);
+  } else {
+    arrCopy[index] = newElement;
+  }
+  return arrCopy;
+}
+
 export function Game() {
   const isMounted = React.useRef(true);
   React.useEffect(() => {
@@ -90,6 +104,7 @@ export function Game() {
           console.error("ws message data not string");
           return;
         }
+        console.log("e", e);
         const message = JSON.parse(e.data) as AnyServer2ClientMessage;
         console.log("ws message", JSON.stringify(message, null, 2));
         try {
@@ -117,9 +132,16 @@ export function Game() {
           setConnectionRecords(newConnectionRecords);
           setImageRecords(newImageRecords);
         } else if (message.action === "imageGenerated") {
-          setImageRecords((prev) => [...prev, message.data]);
+          setImageRecords((prev) => {
+            return uniqueObjArray(prev, message.data.imageRecord);
+          });
+          setConnectionRecords((prev) => {
+            return uniqueObjArray(prev, message.data.connectionRecord);
+          });
         } else if (message.action === "newConnection") {
-          setConnectionRecords((prev) => [...prev, message.data]);
+          setConnectionRecords((prev) => {
+            return uniqueObjArray(prev, message.data);
+          });
         } else if (message.action === "deleteConnection") {
           setConnectionRecords((prev) =>
             prev.filter((x) => x.id !== message.data.id),
@@ -322,7 +344,7 @@ export function Game() {
     }
   } else if (
     gameMetaRecord.status === "playing" &&
-    (currentTime ?? 0) < (gameMetaRecord.timestamps?.[0] ?? 0)
+    (currentTime ?? 0) < (gameMetaRecord.timestamps?.timestampEndPlay ?? 0)
   ) {
     content = (
       <div className="grid grid-rows-[1fr_1fr_1fr]">
@@ -338,7 +360,7 @@ export function Game() {
                   imageRecord.connectionId ===
                   connectionRecord.id.split("#")[1],
               )[0];
-              return (
+              return imageRecord ? (
                 <Image
                   src={imageRecord?.url}
                   alt={`${connectionRecord.name}'s image`}
@@ -346,22 +368,34 @@ export function Game() {
                   width={128}
                   height={128}
                 />
+              ) : (
+                <span
+                  key={connectionRecord.id}
+                  className="bg-gray-200 w-32 h-32"
+                >
+                  {connectionRecord.name}'s image
+                </span>
               );
             })}
         </div>
-        <Image
-          src={myImageRecord?.url}
-          alt="your image"
-          width={256}
-          height={256}
-        />
+        {myImageRecord ? (
+          <Image
+            src={myImageRecord?.url}
+            alt="your image"
+            width={256}
+            height={256}
+          />
+        ) : (
+          <span className="bg-gray-200 w-64 h-64">Your image</span>
+        )}
         <div className="grid grid-flow-row">
           <span className="countdown font-mono text-6xl">
             <span
               style={
                 {
                   "--value":
-                    (gameMetaRecord.timestamps?.[0] ?? 0) - (currentTime ?? 0),
+                    (gameMetaRecord.timestamps?.timestampEndPlay ?? 0) -
+                    (currentTime ?? 0),
                 } as React.CSSProperties
               }
             ></span>
@@ -393,7 +427,7 @@ export function Game() {
     ));
   } else if (
     gameMetaRecord.status === "playing" &&
-    (currentTime ?? 0) < (gameMetaRecord.timestamps?.[1] ?? 0)
+    (currentTime ?? 0) < (gameMetaRecord.timestamps?.timestampEndVote ?? 0)
   ) {
     content = (
       <div className="grid grid-rows-[1fr_1fr_1fr]">
@@ -409,7 +443,7 @@ export function Game() {
                   imageRecord.connectionId ===
                   connectionRecord.id.split("#")[1],
               )[0];
-              return (
+              return imageRecord ? (
                 <Image
                   src={imageRecord?.url}
                   alt={`${connectionRecord.name}'s image`}
@@ -426,31 +460,43 @@ export function Game() {
                     }
                   }}
                 />
+              ) : (
+                <span
+                  key={connectionRecord.id}
+                  className="bg-gray-200 w-32 h-32"
+                >
+                  {connectionRecord.name}'s image
+                </span>
               );
             })}
         </div>
-        <Image
-          src={myImageRecord?.url}
-          alt="your image"
-          width={256}
-          height={256}
-          onClick={() => {
-            const imageId = myImageRecord?.id.split("#")[1];
-            if (imageId != null) {
-              sendMessage({
-                action: "vote",
-                data: { imageId: imageId },
-              });
-            }
-          }}
-        />
+        {myImageRecord ? (
+          <Image
+            src={myImageRecord?.url}
+            alt="your image"
+            width={256}
+            height={256}
+            onClick={() => {
+              const imageId = myImageRecord?.id.split("#")[1];
+              if (imageId != null) {
+                sendMessage({
+                  action: "vote",
+                  data: { imageId: imageId },
+                });
+              }
+            }}
+          />
+        ) : (
+          <span className="bg-gray-200 w-64 h-64">Your image</span>
+        )}
         <div className="grid grid-flow-row">
           <span className="countdown font-mono text-6xl">
             <span
               style={
                 {
                   "--value": Math.floor(
-                    (gameMetaRecord.timestamps?.[1] ?? 0) - (currentTime ?? 0),
+                    (gameMetaRecord.timestamps?.timestampEndVote ?? 0) -
+                      (currentTime ?? 0),
                   ),
                 } as React.CSSProperties
               }
@@ -466,7 +512,7 @@ export function Game() {
     ));
   } else if (
     gameMetaRecord.status === "playing" &&
-    (currentTime ?? 0) >= (gameMetaRecord.timestamps?.[1] ?? 0)
+    (currentTime ?? 0) >= (gameMetaRecord.timestamps?.timestampEndVote ?? 0)
   ) {
     content = (
       <div className="grid grid-rows-[1fr_1fr_1fr]">
@@ -482,7 +528,7 @@ export function Game() {
                   imageRecord.connectionId ===
                   connectionRecord.id.split("#")[1],
               )[0];
-              return (
+              return imageRecord ? (
                 <Image
                   src={imageRecord?.url}
                   alt={`${connectionRecord.name}'s image`}
@@ -499,36 +545,36 @@ export function Game() {
                     }
                   }}
                 />
+              ) : (
+                <span
+                  key={connectionRecord.id}
+                  className="bg-gray-200 w-32 h-32"
+                >
+                  {connectionRecord.name}'s image
+                </span>
               );
             })}
         </div>
-        <Image
-          src={myImageRecord?.url}
-          alt="your image"
-          width={256}
-          height={256}
-          onClick={() => {
-            const imageId = myImageRecord?.id.split("#")[1];
-            if (imageId != null) {
-              sendMessage({
-                action: "vote",
-                data: { imageId: imageId },
-              });
-            }
-          }}
-        />
-        <div className="grid grid-flow-row">
-          <span className="countdown font-mono text-6xl">
-            <span
-              style={
-                {
-                  "--value": Math.floor(
-                    (gameMetaRecord.timestamps?.[1] ?? 0) - (currentTime ?? 0),
-                  ),
-                } as React.CSSProperties
+        {myImageRecord ? (
+          <Image
+            src={myImageRecord?.url}
+            alt="your image"
+            width={256}
+            height={256}
+            onClick={() => {
+              const imageId = myImageRecord?.id.split("#")[1];
+              if (imageId != null) {
+                sendMessage({
+                  action: "vote",
+                  data: { imageId: imageId },
+                });
               }
-            ></span>
-          </span>
+            }}
+          />
+        ) : (
+          <span className="bg-gray-200 w-64 h-64">Your image</span>
+        )}
+        <div className="grid grid-flow-row">
           <span>We have a winner!</span>
           <button
             className="btn btn-primary btn-lg"

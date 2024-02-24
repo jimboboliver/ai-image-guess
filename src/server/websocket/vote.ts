@@ -22,8 +22,14 @@ let apiClient: ApiGatewayManagementApiClient;
 
 export const main: APIGatewayProxyHandler = async (event) => {
   console.log(event);
-  if (event.body == null) {
-    throw new Error("No body");
+  if (event.body == null || event.requestContext.connectionId) {
+    return {
+      statusCode: 500,
+      body: JSON.stringify({
+        action: "serverError",
+        data: { message: "Internal Server Error" },
+      }),
+    };
   }
   const message = JSON.parse(event.body) as VoteMessage;
   try {
@@ -31,9 +37,21 @@ export const main: APIGatewayProxyHandler = async (event) => {
   } catch (error) {
     if (error instanceof Error) {
       console.error(error.message);
-      return { statusCode: 400, body: error.message };
+      return {
+        statusCode: 400,
+        body: JSON.stringify({
+          action: "serverError",
+          data: { message: error.message },
+        }),
+      };
     }
-    return { statusCode: 500, body: "Internal Server Error" };
+    return {
+      statusCode: 500,
+      body: JSON.stringify({
+        action: "serverError",
+        data: { message: "Internal Server Error" },
+      }),
+    };
   }
 
   if (apiClient == null) {
@@ -53,7 +71,13 @@ export const main: APIGatewayProxyHandler = async (event) => {
     }),
   );
   if (connectionRecords.Items == null || connectionRecords.Items.length === 0) {
-    throw new Error("No connection");
+    return {
+      statusCode: 500,
+      body: JSON.stringify({
+        action: "serverError",
+        data: { message: "Internal Server Error" },
+      }),
+    };
   }
   const connectionRecord = unmarshall(
     connectionRecords.Items[0]!,
@@ -71,7 +95,13 @@ export const main: APIGatewayProxyHandler = async (event) => {
     }),
   );
   if (imageRecords.Items == null || imageRecords.Items.length === 0) {
-    throw new Error("No image");
+    return {
+      statusCode: 500,
+      body: JSON.stringify({
+        action: "serverError",
+        data: { message: "Internal Server Error" },
+      }),
+    };
   }
 
   const imageRecord = unmarshall(imageRecords.Items[0]!) as ImageRecord;
@@ -100,10 +130,10 @@ export const main: APIGatewayProxyHandler = async (event) => {
   // send vote to all connections
   await sendMessageToAllGameConnections(
     connectionRecord.game.split("#")[1]!,
-    { data: imageRecord, action: "vote" },
+    { data: { imageRecord, connectionRecord }, action: "vote" },
     ddbClient,
     apiClient,
   );
 
-  return { statusCode: 200, body: "Voted" };
+  return { statusCode: 200, body: JSON.stringify({ action: "serverSuccess" }) };
 };
