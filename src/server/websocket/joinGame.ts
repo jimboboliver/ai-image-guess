@@ -1,6 +1,6 @@
 import { ApiGatewayManagementApiClient } from "@aws-sdk/client-apigatewaymanagementapi";
 import { DynamoDB } from "@aws-sdk/client-dynamodb";
-import type { APIGatewayProxyHandler } from "aws-lambda";
+import type { APIGatewayProxyWebsocketHandlerV2 } from "aws-lambda";
 
 import type { ConnectionRecord } from "../db/dynamodb/connection";
 import { addConnectionToGame } from "../utils/addConnectionToGame";
@@ -16,7 +16,7 @@ const ddbClient = new DynamoDB();
 
 let apiClient: ApiGatewayManagementApiClient;
 
-export const main: APIGatewayProxyHandler = async (event) => {
+export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   console.log(event);
   if (event.body == null || event.requestContext.connectionId == null) {
     return {

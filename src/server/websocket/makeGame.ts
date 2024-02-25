@@ -1,7 +1,7 @@
 import { ApiGatewayManagementApiClient } from "@aws-sdk/client-apigatewaymanagementapi";
 import { DynamoDB, PutItemCommand } from "@aws-sdk/client-dynamodb";
 import { marshall } from "@aws-sdk/util-dynamodb";
-import type { APIGatewayProxyHandler } from "aws-lambda";
+import type { APIGatewayProxyWebsocketHandlerV2 } from "aws-lambda";
 import { Table } from "sst/node/table";
 
 import type { GameMetaRecord } from "../db/dynamodb/gameMeta";
@@ -26,7 +26,7 @@ function generateRandomCode(length = 4): string {
   return result;
 }
 
-export const main: APIGatewayProxyHandler = async (event) => {
+export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   console.log(event);
   if (event.body == null || event.requestContext.connectionId == null) {
     return {

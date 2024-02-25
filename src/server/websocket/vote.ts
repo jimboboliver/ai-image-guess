@@ -5,7 +5,7 @@ import {
   UpdateItemCommand,
 } from "@aws-sdk/client-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
-import type { APIGatewayProxyHandler } from "aws-lambda";
+import type { APIGatewayProxyWebsocketHandlerV2 } from "aws-lambda";
 import { Table } from "sst/node/table";
 
 import type { ConnectionRecord } from "../db/dynamodb/connection";
@@ -20,7 +20,7 @@ const ddbClient = new DynamoDB();
 
 let apiClient: ApiGatewayManagementApiClient;
 
-export const main: APIGatewayProxyHandler = async (event) => {
+export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   console.log(event);
   if (event.body == null || event.requestContext.connectionId) {
     return {

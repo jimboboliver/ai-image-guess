@@ -1,6 +1,6 @@
 import { ApiGatewayManagementApiClient } from "@aws-sdk/client-apigatewaymanagementapi";
 import { DynamoDB } from "@aws-sdk/client-dynamodb";
-import type { APIGatewayProxyHandler } from "aws-lambda";
+import type { APIGatewayProxyWebsocketHandlerV2 } from "aws-lambda";
 
 import { deleteConnection } from "../utils/deleteConnection";
 import { notifyDeleteConnection } from "../utils/notifyDeleteConnection";
@@ -9,7 +9,7 @@ const ddbClient = new DynamoDB();
 
 let apiClient: ApiGatewayManagementApiClient;
 
-export const main: APIGatewayProxyHandler = async (event) => {
+export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   console.log(event);
   if (event.requestContext.connectionId == null) {
     return {

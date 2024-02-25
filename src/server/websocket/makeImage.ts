@@ -6,7 +6,7 @@ import {
 } from "@aws-sdk/client-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import { env } from "~/env";
-import type { APIGatewayProxyHandler } from "aws-lambda";
+import type { APIGatewayProxyWebsocketHandlerV2 } from "aws-lambda";
 import OpenAI from "openai";
 import { Table } from "sst/node/table";
 import { v4 as uuidv4 } from "uuid";
@@ -25,7 +25,7 @@ let apiClient: ApiGatewayManagementApiClient;
 
 const api = new OpenAI({ apiKey: env.API_KEY_OPENAI });
 
-export const main: APIGatewayProxyHandler = async (event) => {
+export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   console.log(event);
   if (event.body == null || event.requestContext.connectionId == null) {
     return {
