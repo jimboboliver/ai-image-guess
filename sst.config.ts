@@ -30,31 +30,52 @@ export default {
         },
         routes: {
           $connect: {
-            function: "src/server/websocket/connect.main",
+            function: {
+              handler: "src/server/websocket/connect.main",
+              timeout: 30,
+            },
             returnResponse: true,
           },
           $disconnect: {
-            function: "src/server/websocket/disconnect.main",
+            function: {
+              handler: "src/server/websocket/disconnect.main",
+              timeout: 30,
+            },
             returnResponse: true,
           },
           joinGame: {
-            function: "src/server/websocket/joinGame.main",
+            function: {
+              handler: "src/server/websocket/joinGame.main",
+              timeout: 30,
+            },
             returnResponse: true,
           },
           makeGame: {
-            function: "src/server/websocket/makeGame.main",
+            function: {
+              handler: "src/server/websocket/makeGame.main",
+              timeout: 30,
+            },
             returnResponse: true,
           },
           makeImage: {
-            function: "src/server/websocket/makeImage.main",
+            function: {
+              handler: "src/server/websocket/makeImage.main",
+              timeout: 30,
+            },
             returnResponse: true,
           },
           progressGame: {
-            function: "src/server/websocket/progressGame.main",
+            function: {
+              handler: "src/server/websocket/progressGame.main",
+              timeout: 30,
+            },
             returnResponse: true,
           },
           vote: {
-            function: "src/server/websocket/vote.main",
+            function: {
+              handler: "src/server/websocket/vote.main",
+              timeout: 30,
+            },
             returnResponse: true,
           },
         },
