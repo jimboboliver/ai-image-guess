@@ -127,6 +127,13 @@ export function Game() {
         ) {
           console.error("bad request", message);
           setErrorMessage("Bad request");
+          if (imageLoading?.messageId === message.messageId) {
+            setImageLoading((prev) => ({
+              loading: false,
+              error: true,
+              messageId: prev?.messageId ?? "",
+            }));
+          }
         } else if ("message" in message) {
           // internal server error message
           console.error(message.message);
@@ -164,6 +171,16 @@ export function Game() {
           setGameMetaRecord(message.dataServer);
         } else if (message.action === "joinGame") {
           setMyConnectionRecord(message.dataServer);
+        } else if (message.action === "makeGame") {
+          setMyConnectionRecord(message.dataServer);
+        } else if (message.action === "makeImage") {
+          if (imageLoading?.messageId === message.messageId) {
+            setImageLoading((prev) => ({
+              loading: false,
+              error: false,
+              messageId: prev?.messageId ?? "",
+            }));
+          }
         }
       };
       return wsNew;
