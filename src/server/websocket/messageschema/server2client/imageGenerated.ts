@@ -4,7 +4,7 @@ import { z } from "zod";
 
 export const imageGeneratedMessageSchema = z.object({
   action: z.literal("imageGenerated"),
-  data: z.object({
+  dataServer: z.object({
     imageRecord: imageRecordSchema,
     connectionRecord: connectionRecordSchema,
   }),

@@ -1,27 +1,33 @@
 import { z } from "zod";
 
 import { deleteConnectionMessageSchema } from "./deleteConnection";
-import { errorSchema } from "./error";
 import { fullGameMessageSchema } from "./fullGame";
 import { imageGeneratedMessageSchema } from "./imageGenerated";
 import { internalServerErrorMessageSchema } from "./internalServerError";
 import { newConnectionMessageSchema } from "./newConnection";
-import { progressGameMessageSchema } from "./progressGame";
-import { successSchema } from "./success";
-import { voteMessageSchema } from "./vote";
-import { yourConnectionMessageSchema } from "./yourConnection";
+import { progressedGameMessageSchema } from "./progressedGame";
+import { joinGameResponseSchema } from "./responses/joinGame";
+import { makeGameResponseSchema } from "./responses/makeGame";
+import { makeImageResponseSchema } from "./responses/makeImage";
+import { progressGameResponseSchema } from "./responses/progressGame";
+import { voteResponseSchema } from "./responses/vote";
+import { votedMessageSchema } from "./voted";
 
-export const anyMessageSchema = z.union([
+export const anyServerMessageSchema = z.union([
+  // broadcast
   fullGameMessageSchema,
   imageGeneratedMessageSchema,
-  progressGameMessageSchema,
-  voteMessageSchema,
+  progressedGameMessageSchema,
+  votedMessageSchema,
   newConnectionMessageSchema,
   deleteConnectionMessageSchema,
-  yourConnectionMessageSchema,
+  // client2server message response
   internalServerErrorMessageSchema,
-  errorSchema,
-  successSchema,
+  joinGameResponseSchema,
+  makeGameResponseSchema,
+  makeImageResponseSchema,
+  progressGameResponseSchema,
+  voteResponseSchema,
 ]);
 
-export type AnyMessage = z.infer<typeof anyMessageSchema>;
+export type AnyServerMessage = z.infer<typeof anyServerMessageSchema>;

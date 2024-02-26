@@ -1,9 +1,11 @@
 import { imageRecordSchema } from "~/server/db/dynamodb/image";
 import { z } from "zod";
 
-export const makeImageMessageSchema = z.object({
+import { baseMessageSchema } from "./base";
+
+export const makeImageMessageSchema = baseMessageSchema.extend({
   action: z.literal("makeImage"),
-  data: z.object({
+  dataClient: z.object({
     promptImage: imageRecordSchema.shape.promptImage,
   }),
 });

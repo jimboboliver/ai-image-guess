@@ -10,33 +10,31 @@ import { Table } from "sst/node/table";
 
 import type { ConnectionRecord } from "../db/dynamodb/connection";
 import type { ImageRecord } from "../db/dynamodb/image";
-import { sendMessageToAllGameConnections } from "../utils/sendRowToAllGameConnections";
+import { sendMessageToAllGameConnections } from "../utils/sendMessageToAllGameConnections";
 import {
   voteMessageSchema,
   type VoteMessage,
 } from "./messageschema/client2server/vote";
+import type { VoteResponse } from "./messageschema/server2client/responses/vote";
 
 const ddbClient = new DynamoDB();
 
 let apiClient: ApiGatewayManagementApiClient;
 
 export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
-  console.log(event);
-  if (event.body == null || event.requestContext.connectionId) {
-    return {
-      statusCode: 500,
-      body: JSON.stringify({
-        action: "serverError",
-        data: { message: "Internal Server Error" },
-      }),
-    };
+  console.debug(event);
+  if (event.requestContext.connectionId == null) {
+    throw new Error("No connectionId");
+  }
+  if (event.body == null) {
+    throw new Error("No body");
   }
   const message = JSON.parse(event.body) as VoteMessage;
   try {
     voteMessageSchema.parse(message);
   } catch (error) {
     if (error instanceof Error) {
-      console.error(error.message);
+      console.warn(error.message);
       return {
         statusCode: 400,
         body: JSON.stringify({
@@ -45,13 +43,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
         }),
       };
     }
-    return {
-      statusCode: 500,
-      body: JSON.stringify({
-        action: "serverError",
-        data: { message: "Internal Server Error" },
-      }),
-    };
+    throw error;
   }
 
   if (apiClient == null) {
@@ -60,7 +52,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
     });
   }
 
-  const connectionRecords = await ddbClient.send(
+  const connectionResponse = await ddbClient.send(
     new QueryCommand({
       TableName: Table.chimpin.tableName,
       IndexName: "idIndex",
@@ -70,41 +62,32 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
       }),
     }),
   );
-  if (connectionRecords.Items == null || connectionRecords.Items.length === 0) {
-    return {
-      statusCode: 500,
-      body: JSON.stringify({
-        action: "serverError",
-        data: { message: "Internal Server Error" },
-      }),
-    };
+  if (
+    connectionResponse.Items == null ||
+    connectionResponse.Items.length === 0
+  ) {
+    throw new Error("No such connection");
   }
   const connectionRecord = unmarshall(
-    connectionRecords.Items[0]!,
+    connectionResponse.Items[0]!,
   ) as ConnectionRecord;
 
   // get image from db
-  const imageRecords = await ddbClient.send(
+  const imageResponse = await ddbClient.send(
     new QueryCommand({
       TableName: Table.chimpin.tableName,
       KeyConditionExpression: "game = :game and id = :id",
       ExpressionAttributeValues: marshall({
         ":game": connectionRecord.game,
-        ":id": `image#${message.data.imageId}`,
+        ":id": `image#${message.dataClient.imageId}`,
       }),
     }),
   );
-  if (imageRecords.Items == null || imageRecords.Items.length === 0) {
-    return {
-      statusCode: 500,
-      body: JSON.stringify({
-        action: "serverError",
-        data: { message: "Internal Server Error" },
-      }),
-    };
+  if (imageResponse.Items == null || imageResponse.Items.length === 0) {
+    throw new Error("No such image");
   }
 
-  const imageRecord = unmarshall(imageRecords.Items[0]!) as ImageRecord;
+  const imageRecord = unmarshall(imageResponse.Items[0]!) as ImageRecord;
 
   // update image
   imageRecord.votes = (imageRecord.votes ?? 0) + 1;
@@ -115,7 +98,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
       TableName: Table.chimpin.tableName,
       Key: marshall({
         game: connectionRecord.game,
-        id: `image#${message.data.imageId}`,
+        id: `image#${message.dataClient.imageId}`,
       }),
       UpdateExpression: "SET #votes = :votes",
       ExpressionAttributeNames: {
@@ -130,10 +113,17 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   // send vote to all connections
   await sendMessageToAllGameConnections(
     connectionRecord.game.split("#")[1]!,
-    { data: { imageRecord, connectionRecord }, action: "vote" },
+    { dataServer: { imageRecord, connectionRecord }, action: "voted" },
     ddbClient,
     apiClient,
   );
 
-  return { statusCode: 200, body: JSON.stringify({ action: "serverSuccess" }) };
+  const response: VoteResponse = {
+    ...message,
+    serverStatus: "success",
+  };
+  return {
+    statusCode: 200,
+    body: JSON.stringify(response),
+  };
 };

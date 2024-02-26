@@ -5,7 +5,7 @@ import { z } from "zod";
 
 export const fullGameMessageSchema = z.object({
   action: z.literal("fullGame"),
-  data: z.array(
+  dataServer: z.array(
     imageRecordSchema.or(connectionRecordSchema).or(gameMetaRecordSchema),
   ),
 });

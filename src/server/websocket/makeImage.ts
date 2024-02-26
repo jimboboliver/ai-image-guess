@@ -13,11 +13,12 @@ import { v4 as uuidv4 } from "uuid";
 
 import type { ConnectionRecord } from "../db/dynamodb/connection";
 import type { ImageRecord } from "../db/dynamodb/image";
-import { sendMessageToAllGameConnections } from "../utils/sendRowToAllGameConnections";
+import { sendMessageToAllGameConnections } from "../utils/sendMessageToAllGameConnections";
 import {
   makeImageMessageSchema,
   type MakeImageMessage,
 } from "./messageschema/client2server/makeImage";
+import type { MakeImageResponse } from "./messageschema/server2client/responses/makeImage";
 
 const ddbClient = new DynamoDB();
 
@@ -26,22 +27,19 @@ let apiClient: ApiGatewayManagementApiClient;
 const api = new OpenAI({ apiKey: env.API_KEY_OPENAI });
 
 export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
-  console.log(event);
-  if (event.body == null || event.requestContext.connectionId == null) {
-    return {
-      statusCode: 500,
-      body: JSON.stringify({
-        action: "serverError",
-        data: { message: "Internal Server Error" },
-      }),
-    };
+  console.debug(event);
+  if (event.requestContext.connectionId == null) {
+    throw new Error("No connectionId");
+  }
+  if (event.body == null) {
+    throw new Error("No body");
   }
   const message = JSON.parse(event.body) as MakeImageMessage;
   try {
     makeImageMessageSchema.parse(message);
   } catch (error) {
     if (error instanceof Error) {
-      console.error(error.message);
+      console.warn(error.message);
       return {
         statusCode: 400,
         body: JSON.stringify({
@@ -50,17 +48,11 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
         }),
       };
     }
-    return {
-      statusCode: 500,
-      body: JSON.stringify({
-        action: "serverError",
-        data: { message: "Internal Server Error" },
-      }),
-    };
+    throw error;
   }
 
   // get connection from db
-  const connectionRecords = await ddbClient.send(
+  const connectionResponse = await ddbClient.send(
     new QueryCommand({
       TableName: Table.chimpin.tableName,
       IndexName: "idIndex",
@@ -70,45 +62,36 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
       }),
     }),
   );
-  if (connectionRecords.Items == null || connectionRecords.Items.length === 0) {
-    return {
-      statusCode: 500,
-      body: JSON.stringify({
-        action: "serverError",
-        data: { message: "Internal Server Error" },
-      }),
-    };
+  if (
+    connectionResponse.Items == null ||
+    connectionResponse.Items.length === 0
+  ) {
+    throw new Error("No such connection");
   }
   const connectionRecord = unmarshall(
-    connectionRecords.Items[0]!,
+    connectionResponse.Items[0]!,
   ) as ConnectionRecord;
 
-  const response = await api.images.generate({
+  const imageApiResponse = await api.images.generate({
     model: "dall-e-2",
-    prompt: message.data.promptImage,
+    prompt: message.dataClient.promptImage,
     n: 1,
     size: "256x256",
   });
   if (
-    response.data == null ||
-    response.data.length === 0 ||
-    response.data[0]?.url == null
+    imageApiResponse.data == null ||
+    imageApiResponse.data.length === 0 ||
+    imageApiResponse.data[0]?.url == null
   ) {
-    return {
-      statusCode: 500,
-      body: JSON.stringify({
-        action: "serverError",
-        data: { message: "Internal Server Error" },
-      }),
-    };
+    throw new Error("Image api response invalid");
   }
   // put image record into db
   const imageRecord: ImageRecord = {
     game: connectionRecord.game,
     id: `image#${uuidv4()}`,
-    url: response.data[0]?.url,
+    url: imageApiResponse.data[0]?.url,
     connectionId: event.requestContext.connectionId,
-    promptImage: message.data.promptImage,
+    promptImage: message.dataClient.promptImage,
   };
   await ddbClient.send(
     new PutItemCommand({
@@ -123,9 +106,17 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   }
   await sendMessageToAllGameConnections(
     connectionRecord.game.split("#")[1]!,
-    { data: { imageRecord, connectionRecord }, action: "imageGenerated" },
+    { dataServer: { imageRecord, connectionRecord }, action: "imageGenerated" },
     ddbClient,
     apiClient,
   );
-  return { statusCode: 200, body: JSON.stringify({ action: "serverSuccess" }) };
+
+  const response: MakeImageResponse = {
+    ...message,
+    serverStatus: "success",
+  };
+  return {
+    statusCode: 200,
+    body: JSON.stringify(response),
+  };
 };

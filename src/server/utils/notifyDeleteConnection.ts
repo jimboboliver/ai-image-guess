@@ -16,7 +16,7 @@ export async function notifyDeleteConnection(
   ddbClient: DynamoDB,
   apiClient: ApiGatewayManagementApiClient,
 ) {
-  const existingConnectionRecords = await ddbClient.send(
+  const existingConnectionResponse = await ddbClient.send(
     new QueryCommand({
       TableName: Table.chimpin.tableName,
       KeyConditionExpression: "game = :game AND begins_with(id, :connection)",
@@ -27,17 +27,17 @@ export async function notifyDeleteConnection(
     }),
   );
 
-  for (const item of existingConnectionRecords.Items ?? []) {
+  for (const item of existingConnectionResponse.Items ?? []) {
     const existingConnectionRecord = unmarshall(item) as ConnectionRecord;
     const connectionId = existingConnectionRecord.id.split("#")[1];
     try {
-      console.log(
+      console.debug(
         "Sending message to a connection",
         existingConnectionRecord.id.split("#")[1],
       );
       const fullGameMessage: DeleteConnectionMessage = {
         action: "deleteConnection",
-        data: connectionRecord,
+        dataServer: connectionRecord,
       };
       await apiClient.send(
         new PostToConnectionCommand({
@@ -45,16 +45,14 @@ export async function notifyDeleteConnection(
           Data: JSON.stringify(fullGameMessage),
         }),
       );
-    } catch (e) {
-      if (e instanceof GoneException) {
-        console.log("Connection was closed");
+    } catch (error) {
+      if (error instanceof GoneException) {
+        console.debug("Connection was closed");
         if (connectionId != null) {
           await deleteConnection(connectionId);
         }
-      } else {
-        console.error("Failed to send message", JSON.stringify(e));
-        throw e;
       }
+      throw error;
     }
   }
 }

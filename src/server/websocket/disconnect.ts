@@ -10,15 +10,9 @@ const ddbClient = new DynamoDB();
 let apiClient: ApiGatewayManagementApiClient;
 
 export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
-  console.log(event);
+  console.debug(event);
   if (event.requestContext.connectionId == null) {
-    return {
-      statusCode: 500,
-      body: JSON.stringify({
-        action: "serverError",
-        data: { message: "Internal Server Error" },
-      }),
-    };
+    throw new Error("No connectionId");
   }
 
   const deletedConnectionRecords = await deleteConnection(
@@ -35,5 +29,5 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
     await notifyDeleteConnection(deletedConnectionRecord, ddbClient, apiClient);
   }
 
-  return { statusCode: 200, body: JSON.stringify({ action: "serverSuccess" }) };
+  return { statusCode: 200 };
 };

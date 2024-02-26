@@ -2,9 +2,11 @@ import { connectionRecordSchema } from "~/server/db/dynamodb/connection";
 import { gameMetaRecordSchema } from "~/server/db/dynamodb/gameMeta";
 import { z } from "zod";
 
-export const joinGameMessageSchema = z.object({
+import { baseMessageSchema } from "./base";
+
+export const joinGameMessageSchema = baseMessageSchema.extend({
   action: z.literal("joinGame"),
-  data: z.object({
+  dataClient: z.object({
     gameCode: gameMetaRecordSchema.shape.gameCode,
     name: connectionRecordSchema.shape.name,
   }),

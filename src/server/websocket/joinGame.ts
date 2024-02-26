@@ -5,34 +5,31 @@ import type { APIGatewayProxyWebsocketHandlerV2 } from "aws-lambda";
 import type { ConnectionRecord } from "../db/dynamodb/connection";
 import { addConnectionToGame } from "../utils/addConnectionToGame";
 import { notifyNewConnection } from "../utils/notifyNewConnection";
-import { notifyYourConnection } from "../utils/notifyYourConnection";
 import { sendFullGame } from "../utils/sendFullGame";
 import {
   joinGameMessageSchema,
   type JoinGameMessage,
 } from "./messageschema/client2server/joinGame";
+import type { JoinGameResponse } from "./messageschema/server2client/responses/joinGame";
 
 const ddbClient = new DynamoDB();
 
 let apiClient: ApiGatewayManagementApiClient;
 
 export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
-  console.log(event);
-  if (event.body == null || event.requestContext.connectionId == null) {
-    return {
-      statusCode: 500,
-      body: JSON.stringify({
-        action: "serverError",
-        data: { message: "Internal Server Error" },
-      }),
-    };
+  console.debug(event);
+  if (event.requestContext.connectionId == null) {
+    throw new Error("No connectionId");
+  }
+  if (event.body == null) {
+    throw new Error("No body");
   }
   const message = JSON.parse(event.body) as JoinGameMessage;
   try {
     joinGameMessageSchema.parse(message);
   } catch (error) {
     if (error instanceof Error) {
-      console.error(error.message);
+      console.warn(error.message);
       return {
         statusCode: 400,
         body: JSON.stringify({
@@ -41,26 +38,20 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
         }),
       };
     }
-    return {
-      statusCode: 500,
-      body: JSON.stringify({
-        action: "serverError",
-        data: { message: "Internal Server Error" },
-      }),
-    };
+    throw error;
   }
 
-  let connectionRow: ConnectionRecord;
+  let connectionRecord: ConnectionRecord;
   try {
-    connectionRow = await addConnectionToGame(
+    connectionRecord = await addConnectionToGame(
       event.requestContext.connectionId,
-      message.data.gameCode,
-      message.data.name,
+      message.dataClient.gameCode,
+      message.dataClient.name,
       ddbClient,
     );
   } catch (error) {
     if (error instanceof Error && error.message === "No such game") {
-      console.log("No such game");
+      console.warn("No such game");
       return {
         statusCode: 400,
         body: JSON.stringify({
@@ -69,13 +60,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
         }),
       };
     }
-    return {
-      statusCode: 500,
-      body: JSON.stringify({
-        action: "serverError",
-        data: { message: "Internal Server Error" },
-      }),
-    };
+    throw error;
   }
 
   if (apiClient == null) {
@@ -84,15 +69,22 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
     });
   }
 
-  await notifyYourConnection(connectionRow, apiClient);
-  await notifyNewConnection(connectionRow, ddbClient, apiClient);
+  await notifyNewConnection(connectionRecord, ddbClient, apiClient);
 
   await sendFullGame(
     event.requestContext.connectionId,
-    message.data.gameCode,
+    message.dataClient.gameCode,
     ddbClient,
     apiClient,
   );
 
-  return { statusCode: 200, body: JSON.stringify({ action: "serverSuccess" }) };
+  const response: JoinGameResponse = {
+    ...message,
+    dataServer: connectionRecord,
+    serverStatus: "success",
+  };
+  return {
+    statusCode: 200,
+    body: JSON.stringify(response),
+  };
 };

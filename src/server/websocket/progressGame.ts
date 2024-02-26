@@ -11,33 +11,31 @@ import { Table } from "sst/node/table";
 
 import type { ConnectionRecord } from "../db/dynamodb/connection";
 import type { GameMetaRecord } from "../db/dynamodb/gameMeta";
-import { sendMessageToAllGameConnections } from "../utils/sendRowToAllGameConnections";
+import { sendMessageToAllGameConnections } from "../utils/sendMessageToAllGameConnections";
 import {
   progressGameMessageSchema,
   type ProgressGameMessage,
 } from "./messageschema/client2server/progressGame";
+import type { ProgressGameResponse } from "./messageschema/server2client/responses/progressGame";
 
 const ddbClient = new DynamoDB();
 
 let apiClient: ApiGatewayManagementApiClient;
 
 export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
-  console.log(event);
-  if (event.body == null || event.requestContext.connectionId == null) {
-    return {
-      statusCode: 500,
-      body: JSON.stringify({
-        action: "serverError",
-        data: { message: "Internal Server Error" },
-      }),
-    };
+  console.debug(event);
+  if (event.requestContext.connectionId == null) {
+    throw new Error("No connectionId");
+  }
+  if (event.body == null) {
+    throw new Error("No body");
   }
   const message = JSON.parse(event.body) as ProgressGameMessage;
   try {
     progressGameMessageSchema.parse(message);
   } catch (error) {
     if (error instanceof Error) {
-      console.error(error.message);
+      console.warn(error.message);
       return {
         statusCode: 400,
         body: JSON.stringify({
@@ -46,17 +44,11 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
         }),
       };
     }
-    return {
-      statusCode: 500,
-      body: JSON.stringify({
-        action: "serverError",
-        data: { message: "Internal Server Error" },
-      }),
-    };
+    throw error;
   }
 
   // get connection from db
-  const connectionRecords = await ddbClient.send(
+  const connectionResponse = await ddbClient.send(
     new QueryCommand({
       TableName: Table.chimpin.tableName,
       IndexName: "idIndex",
@@ -66,21 +58,18 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
       }),
     }),
   );
-  if (connectionRecords.Items == null || connectionRecords.Items.length === 0) {
-    return {
-      statusCode: 500,
-      body: JSON.stringify({
-        action: "serverError",
-        data: { message: "Internal Server Error" },
-      }),
-    };
+  if (
+    connectionResponse.Items == null ||
+    connectionResponse.Items.length === 0
+  ) {
+    throw new Error("No such connection");
   }
   const connectionRecord = unmarshall(
-    connectionRecords.Items[0]!,
+    connectionResponse.Items[0]!,
   ) as ConnectionRecord;
 
   // update game meta
-  const gameRecord = (
+  const gameDdbRecord = (
     await ddbClient.send(
       new GetItemCommand({
         TableName: Table.chimpin.tableName,
@@ -91,32 +80,26 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
       }),
     )
   ).Item;
-  if (gameRecord == null) {
-    return {
-      statusCode: 500,
-      body: JSON.stringify({
-        action: "serverError",
-        data: { message: "Internal Server Error" },
-      }),
-    };
+  if (gameDdbRecord == null) {
+    throw new Error("No such game");
   }
   let updateExpression = "SET #status = :status";
   const expressionAttributeNames: Record<string, string> = {
     "#status": "status",
   };
   const expressionAttributeValues: Record<string, unknown> = {
-    ":status": message.data.status,
+    ":status": message.dataClient.status,
   };
-  const gameRow = unmarshall(gameRecord) as GameMetaRecord;
-  gameRow.status = message.data.status;
-  if (message.data.status === "playing") {
-    gameRow.timestamps = {
+  const gameRecord = unmarshall(gameDdbRecord) as GameMetaRecord;
+  gameRecord.status = message.dataClient.status;
+  if (message.dataClient.status === "playing") {
+    gameRecord.timestamps = {
       timestampEndPlay: Date.now() / 1000 + 30,
       timestampEndVote: Date.now() / 1000 + 60,
     };
     updateExpression += ", #timestamps = :timestamps";
     expressionAttributeNames["#timestamps"] = "timestamps";
-    expressionAttributeValues[":timestamps"] = gameRow.timestamps;
+    expressionAttributeValues[":timestamps"] = gameRecord.timestamps;
   }
   await ddbClient.send(
     new UpdateItemCommand({
@@ -137,9 +120,17 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   }
   await sendMessageToAllGameConnections(
     connectionRecord.game.split("#")[1]!,
-    { data: gameRow, action: "progressGame" },
+    { dataServer: gameRecord, action: "progressedGame" },
     ddbClient,
     apiClient,
   );
-  return { statusCode: 200, body: JSON.stringify({ action: "serverSuccess" }) };
+
+  const response: ProgressGameResponse = {
+    ...message,
+    serverStatus: "success",
+  };
+  return {
+    statusCode: 200,
+    body: JSON.stringify(response),
+  };
 };

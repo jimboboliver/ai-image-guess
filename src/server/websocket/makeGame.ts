@@ -6,12 +6,12 @@ import { Table } from "sst/node/table";
 
 import type { GameMetaRecord } from "../db/dynamodb/gameMeta";
 import { addConnectionToGame } from "../utils/addConnectionToGame";
-import { notifyYourConnection } from "../utils/notifyYourConnection";
 import { sendFullGame } from "../utils/sendFullGame";
 import {
   makeGameMessageSchema,
   type MakeGameMessage,
 } from "./messageschema/client2server/makeGame";
+import type { MakeGameResponse } from "./messageschema/server2client/responses/makeGame";
 
 const ddbClient = new DynamoDB();
 
@@ -27,15 +27,12 @@ function generateRandomCode(length = 4): string {
 }
 
 export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
-  console.log(event);
-  if (event.body == null || event.requestContext.connectionId == null) {
-    return {
-      statusCode: 500,
-      body: JSON.stringify({
-        action: "serverError",
-        data: { message: "Internal Server Error" },
-      }),
-    };
+  console.debug(event);
+  if (event.requestContext.connectionId == null) {
+    throw new Error("No connectionId");
+  }
+  if (event.body == null) {
+    throw new Error("No body");
   }
 
   const message = JSON.parse(event.body) as MakeGameMessage;
@@ -43,7 +40,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
     makeGameMessageSchema.parse(message);
   } catch (error) {
     if (error instanceof Error) {
-      console.error(error.message);
+      console.warn(error.message);
       return {
         statusCode: 400,
         body: JSON.stringify({
@@ -52,16 +49,10 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
         }),
       };
     }
-    return {
-      statusCode: 500,
-      body: JSON.stringify({
-        action: "serverError",
-        data: { message: "Internal Server Error" },
-      }),
-    };
+    throw error;
   }
   const gameCode = generateRandomCode();
-  const gameMetaRow: GameMetaRecord = {
+  const gameMetaRecord: GameMetaRecord = {
     game: `game#${gameCode}`,
     id: "meta",
     status: "lobby",
@@ -70,13 +61,13 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
     gameType: "chimpin",
   };
 
-  console.log("Creating game", gameMetaRow);
+  console.debug("Creating game", gameMetaRecord);
 
   // TODO check game doesn't exist
   await ddbClient.send(
     new PutItemCommand({
       TableName: Table.chimpin.tableName,
-      Item: marshall(gameMetaRow),
+      Item: marshall(gameMetaRecord),
     }),
   );
 
@@ -89,10 +80,9 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   const connectionRecord = await addConnectionToGame(
     event.requestContext.connectionId,
     gameCode,
-    message.data.name,
+    message.dataClient.name,
     ddbClient,
   );
-  await notifyYourConnection(connectionRecord, apiClient);
 
   await sendFullGame(
     event.requestContext.connectionId,
@@ -101,5 +91,13 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
     apiClient,
   );
 
-  return { statusCode: 200, body: JSON.stringify({ action: "serverSuccess" }) };
+  const response: MakeGameResponse = {
+    ...message,
+    dataServer: connectionRecord,
+    serverStatus: "success",
+  };
+  return {
+    statusCode: 200,
+    body: JSON.stringify(response),
+  };
 };

@@ -19,7 +19,7 @@ export async function sendFullGame(
   ddbClient: DynamoDB,
   apiClient: ApiGatewayManagementApiClient,
 ) {
-  const gameRecords = await ddbClient.send(
+  const gameDdbResponse = await ddbClient.send(
     new QueryCommand({
       TableName: Table.chimpin.tableName,
       KeyConditionExpression: "game = :game",
@@ -29,17 +29,15 @@ export async function sendFullGame(
     }),
   );
 
-  const gameRows = gameRecords.Items?.map((record) => unmarshall(record)) as (
-    | ConnectionRecord
-    | GameMetaRecord
-    | ImageRecord
-  )[];
+  const gameRecords = gameDdbResponse.Items?.map((record) =>
+    unmarshall(record),
+  ) as (ConnectionRecord | GameMetaRecord | ImageRecord)[];
 
   try {
-    console.log("Sending message to a connection", connectionId);
+    console.debug("Sending message to a connection", connectionId);
     const fullGameMessage: FullGameMessage = {
       action: "fullGame",
-      data: gameRows,
+      dataServer: gameRecords,
     };
     await apiClient.send(
       new PostToConnectionCommand({
@@ -47,14 +45,13 @@ export async function sendFullGame(
         Data: JSON.stringify(fullGameMessage),
       }),
     );
-  } catch (e) {
-    if (e instanceof GoneException) {
-      console.log("Connection was closed");
+  } catch (error) {
+    if (error instanceof GoneException) {
+      console.debug("Connection was closed");
       if (connectionId != null) {
         await deleteConnection(connectionId);
       }
-    } else {
-      console.log("Failed to send message", JSON.stringify(e));
     }
+    throw error;
   }
 }

@@ -1,8 +1,10 @@
 import { z } from "zod";
 
-export const voteMessageSchema = z.object({
+import { baseMessageSchema } from "./base";
+
+export const voteMessageSchema = baseMessageSchema.extend({
   action: z.literal("vote"),
-  data: z.object({
+  dataClient: z.object({
     imageId: z.string(),
   }),
 });

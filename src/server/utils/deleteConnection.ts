@@ -11,7 +11,7 @@ import type { ConnectionRecord } from "../db/dynamodb/connection";
 
 export async function deleteConnection(connectionId: string) {
   const ddbClient = new DynamoDB();
-  const connectionRecords = await ddbClient.send(
+  const connectionDdbResponse = await ddbClient.send(
     new QueryCommand({
       TableName: Table.chimpin.tableName,
       IndexName: "idIndex",
@@ -35,10 +35,10 @@ export async function deleteConnection(connectionId: string) {
     );
   };
 
-  await Promise.all(connectionRecords.Items?.map(deleteConnection) ?? []);
+  await Promise.all(connectionDdbResponse.Items?.map(deleteConnection) ?? []);
 
   return (
-    connectionRecords.Items?.map(
+    connectionDdbResponse.Items?.map(
       (item) => unmarshall(item) as ConnectionRecord,
     ) ?? []
   );

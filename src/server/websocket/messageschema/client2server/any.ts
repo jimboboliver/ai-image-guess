@@ -6,7 +6,7 @@ import { makeImageMessageSchema } from "./makeImage";
 import { progressGameMessageSchema } from "./progressGame";
 import { voteMessageSchema } from "./vote";
 
-export const anyMessageSchema = z.union([
+export const anyClientMessageSchema = z.union([
   progressGameMessageSchema,
   makeGameMessageSchema,
   voteMessageSchema,
@@ -14,4 +14,4 @@ export const anyMessageSchema = z.union([
   joinGameMessageSchema,
 ]);
 
-export type AnyMessage = z.infer<typeof anyMessageSchema>;
+export type AnyClientMessage = z.infer<typeof anyClientMessageSchema>;

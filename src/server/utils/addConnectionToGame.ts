@@ -15,7 +15,7 @@ export async function addConnectionToGame(
   name: string,
   ddbClient: DynamoDB,
 ) {
-  const gameMeta = await ddbClient.send(
+  const gameMetaDdbResponse = await ddbClient.send(
     new GetItemCommand({
       TableName: Table.chimpin.tableName,
       Key: marshall({
@@ -24,7 +24,7 @@ export async function addConnectionToGame(
       }),
     }),
   );
-  if (gameMeta.Item == null) {
+  if (gameMetaDdbResponse.Item == null) {
     throw Error("No such game");
   }
   // check that connection isn't in another game
@@ -36,7 +36,7 @@ export async function addConnectionToGame(
     name,
   };
 
-  console.log("Adding connection to game", newConnection);
+  console.debug("Adding connection to game", newConnection);
 
   await ddbClient.send(
     new PutItemCommand({

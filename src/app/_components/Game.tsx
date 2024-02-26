@@ -13,13 +13,14 @@ import {
   promptImageMaxLength,
   type ImageRecord,
 } from "~/server/db/dynamodb/image";
-import type { AnyMessage } from "~/server/websocket/messageschema/client2server/any";
+import type { AnyClientMessage } from "~/server/websocket/messageschema/client2server/any";
 import {
-  anyMessageSchema,
-  type AnyMessage as AnyServer2ClientMessage,
+  anyServerMessageSchema,
+  type AnyServerMessage as AnyServer2ClientMessage,
 } from "~/server/websocket/messageschema/server2client/any";
 import Image from "next/image";
 import React from "react";
+import { v4 as uuid } from "uuid";
 
 import { Avatar } from "./Avatar";
 
@@ -35,6 +36,12 @@ function uniqueObjArray<T extends Record<string, unknown>>(
     arrCopy[index] = newElement;
   }
   return arrCopy;
+}
+
+interface ImageLoading {
+  loading: boolean;
+  error: boolean;
+  messageId: string;
 }
 
 export function Game() {
@@ -56,6 +63,7 @@ export function Game() {
   const [name, setName] = React.useState<string>("");
   const [gameCode, setGameCode] = React.useState<string>("");
   const [promptImage, setPromptImage] = React.useState<string>("");
+  const [imageLoading, setImageLoading] = React.useState<ImageLoading>();
 
   const [currentTime, setCurrentTime] = React.useState<number>();
   React.useEffect(() => {
@@ -81,13 +89,13 @@ export function Game() {
 
   React.useEffect(() => {
     const openWebSocket = () => {
-      console.log("Opening websocket");
+      console.debug("Opening websocket");
       const wsNew = new WebSocket(env.NEXT_PUBLIC_API_ENDPOINT_WEBSOCKET);
       wsNew.onopen = () => {
-        console.log("ws open");
+        console.debug("ws open");
       };
       wsNew.onclose = () => {
-        console.log("ws close");
+        console.debug("ws close");
         if (isMounted.current) {
           setTimeout(() => {
             const newWs = openWebSocket();
@@ -97,30 +105,36 @@ export function Game() {
         }
       };
       wsNew.onerror = (e) => {
-        console.log("ws error", e);
+        console.debug("ws error", e);
       };
       wsNew.onmessage = (e) => {
         if (typeof e.data !== "string") {
           console.error("ws message data not string");
           return;
         }
-        console.log("e", e);
+        console.debug("e", e);
         const message = JSON.parse(e.data) as AnyServer2ClientMessage;
-        console.log("ws message", JSON.stringify(message, null, 2));
+        console.debug("ws message", JSON.stringify(message, null, 2));
         try {
-          anyMessageSchema.parse(message);
+          anyServerMessageSchema.parse(message);
         } catch (error) {
           console.error("ws message not valid", error);
           return;
         }
-        if ("message" in message) {
-          // error message
+        if (
+          "serverStatus" in message &&
+          message.serverStatus === "bad request"
+        ) {
+          console.error("bad request", message);
+          setErrorMessage("Bad request");
+        } else if ("message" in message) {
+          // internal server error message
           console.error(message.message);
           setErrorMessage(message.message);
         } else if (message.action === "fullGame") {
           const newImageRecords: ImageRecord[] = [];
           const newConnectionRecords: ConnectionRecord[] = [];
-          message.data.forEach((row) => {
+          message.dataServer.forEach((row) => {
             if ("url" in row) {
               newImageRecords.push(row);
             } else if ("name" in row) {
@@ -133,23 +147,23 @@ export function Game() {
           setImageRecords(newImageRecords);
         } else if (message.action === "imageGenerated") {
           setImageRecords((prev) => {
-            return uniqueObjArray(prev, message.data.imageRecord);
+            return uniqueObjArray(prev, message.dataServer.imageRecord);
           });
           setConnectionRecords((prev) => {
-            return uniqueObjArray(prev, message.data.connectionRecord);
+            return uniqueObjArray(prev, message.dataServer.connectionRecord);
           });
         } else if (message.action === "newConnection") {
           setConnectionRecords((prev) => {
-            return uniqueObjArray(prev, message.data);
+            return uniqueObjArray(prev, message.dataServer);
           });
         } else if (message.action === "deleteConnection") {
           setConnectionRecords((prev) =>
-            prev.filter((x) => x.id !== message.data.id),
+            prev.filter((x) => x.id !== message.dataServer.id),
           );
-        } else if (message.action === "progressGame") {
-          setGameMetaRecord(message.data);
-        } else if (message.action === "yourConnection") {
-          setMyConnectionRecord(message.data);
+        } else if (message.action === "progressedGame") {
+          setGameMetaRecord(message.dataServer);
+        } else if (message.action === "joinGame") {
+          setMyConnectionRecord(message.dataServer);
         }
       };
       return wsNew;
@@ -166,7 +180,7 @@ export function Game() {
   }, []);
 
   const sendMessage = React.useCallback(
-    (data: AnyMessage) => {
+    (data: AnyClientMessage) => {
       if (ws == null) {
         console.error("ws not open");
         return;
@@ -237,7 +251,8 @@ export function Game() {
             onClick={() => {
               sendMessage({
                 action: "makeGame",
-                data: { name },
+                dataClient: { name },
+                messageId: uuid(),
               });
             }}
           >
@@ -288,7 +303,8 @@ export function Game() {
             onClick={() => {
               sendMessage({
                 action: "joinGame",
-                data: { name, gameCode },
+                dataClient: { name, gameCode },
+                messageId: uuid(),
               });
             }}
           >
@@ -312,7 +328,8 @@ export function Game() {
             onClick={() => {
               sendMessage({
                 action: "progressGame",
-                data: { status: "playing" },
+                dataClient: { status: "playing" },
+                messageId: uuid(),
               });
             }}
           >
@@ -385,6 +402,8 @@ export function Game() {
             width={256}
             height={256}
           />
+        ) : imageLoading ? (
+          <div className="skeleton w-64 h-64"></div>
         ) : (
           <span className="bg-gray-200 w-64 h-64">Your image</span>
         )}
@@ -411,9 +430,16 @@ export function Game() {
           <button
             className="btn btn-primary btn-lg"
             onClick={() => {
+              const messageId = uuid();
+              setImageLoading({
+                loading: true,
+                error: false,
+                messageId,
+              });
               sendMessage({
                 action: "makeImage",
-                data: { promptImage },
+                dataClient: { promptImage },
+                messageId,
               });
             }}
           >
@@ -455,7 +481,8 @@ export function Game() {
                     if (imageId != null) {
                       sendMessage({
                         action: "vote",
-                        data: { imageId: imageId },
+                        dataClient: { imageId: imageId },
+                        messageId: uuid(),
                       });
                     }
                   }}
@@ -481,7 +508,8 @@ export function Game() {
               if (imageId != null) {
                 sendMessage({
                   action: "vote",
-                  data: { imageId: imageId },
+                  dataClient: { imageId: imageId },
+                  messageId: uuid(),
                 });
               }
             }}
@@ -540,7 +568,8 @@ export function Game() {
                     if (imageId != null) {
                       sendMessage({
                         action: "vote",
-                        data: { imageId: imageId },
+                        dataClient: { imageId: imageId },
+                        messageId: uuid(),
                       });
                     }
                   }}
@@ -566,7 +595,8 @@ export function Game() {
               if (imageId != null) {
                 sendMessage({
                   action: "vote",
-                  data: { imageId: imageId },
+                  dataClient: { imageId: imageId },
+                  messageId: uuid(),
                 });
               }
             }}
@@ -581,7 +611,8 @@ export function Game() {
             onClick={() => {
               sendMessage({
                 action: "progressGame",
-                data: { status: "lobby" },
+                dataClient: { status: "lobby" },
+                messageId: uuid(),
               });
             }}
           >

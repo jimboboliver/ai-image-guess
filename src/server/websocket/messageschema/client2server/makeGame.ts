@@ -1,9 +1,11 @@
 import { connectionRecordSchema } from "~/server/db/dynamodb/connection";
 import { z } from "zod";
 
-export const makeGameMessageSchema = z.object({
+import { baseMessageSchema } from "./base";
+
+export const makeGameMessageSchema = baseMessageSchema.extend({
   action: z.literal("makeGame"),
-  data: z.object({
+  dataClient: z.object({
     name: connectionRecordSchema.shape.name,
   }),
 });

@@ -1,9 +1,11 @@
 import { gameMetaRecordSchema } from "~/server/db/dynamodb/gameMeta";
 import { z } from "zod";
 
-export const progressGameMessageSchema = z.object({
+import { baseMessageSchema } from "./base";
+
+export const progressGameMessageSchema = baseMessageSchema.extend({
   action: z.literal("progressGame"),
-  data: z.object({
+  dataClient: z.object({
     status: gameMetaRecordSchema.shape.status,
   }),
 });
