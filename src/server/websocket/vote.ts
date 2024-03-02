@@ -73,6 +73,17 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
     connectionResponse.Items[0]!,
   ) as ConnectionRecord;
 
+  if (connectionRecord.votedImageId) {
+    const response: VoteResponse = {
+      ...message,
+      serverStatus: "bad request",
+    };
+    return {
+      statusCode: 400,
+      body: JSON.stringify(response),
+    };
+  }
+
   // get image from db
   const imageResponse = await ddbClient.send(
     new QueryCommand({
@@ -90,9 +101,26 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
 
   const imageRecord = unmarshall(imageResponse.Items[0]!) as ImageRecord;
 
+  // update connection
+  connectionRecord.votedImageId = message.dataClient.imageId;
+  await ddbClient.send(
+    new UpdateItemCommand({
+      TableName: Table.chimpin.tableName,
+      Key: marshall({
+        game: connectionRecord.game,
+        id: connectionRecord.id,
+      }),
+      UpdateExpression: "SET #votedImageId = :votedImageId",
+      ExpressionAttributeNames: {
+        "#votedImageId": "votedImageId",
+      },
+      ExpressionAttributeValues: marshall({
+        ":votedImageId": connectionRecord.votedImageId,
+      }),
+    }),
+  );
   // update image
   imageRecord.votes = (imageRecord.votes ?? 0) + 1;
-
   // TODO handle race to update vote count
   await ddbClient.send(
     new UpdateItemCommand({
