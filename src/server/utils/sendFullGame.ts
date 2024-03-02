@@ -51,6 +51,7 @@ export async function sendFullGame(
       if (connectionId != null) {
         await deleteConnection(connectionId);
       }
+      return;
     }
     throw error;
   }

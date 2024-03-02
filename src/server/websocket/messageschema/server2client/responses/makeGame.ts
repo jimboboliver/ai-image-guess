@@ -7,7 +7,7 @@ import { directResponseSchema } from "./directResponseSchema";
 export const makeGameResponseSchema = makeGameMessageSchema
   .extend({
     dataClient: makeGameMessageSchema.shape.dataClient.optional(),
-    dataServer: connectionRecordSchema,
+    dataServer: connectionRecordSchema.optional(),
   })
   .extend(directResponseSchema.shape)
   .refine((data) => {

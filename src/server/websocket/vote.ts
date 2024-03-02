@@ -35,12 +35,13 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   } catch (error) {
     if (error instanceof Error) {
       console.warn(error.message);
+      const response: VoteResponse = {
+        ...message,
+        serverStatus: "bad request",
+      };
       return {
         statusCode: 400,
-        body: JSON.stringify({
-          action: "serverError",
-          data: { message: error.message },
-        }),
+        body: JSON.stringify(response),
       };
     }
     throw error;

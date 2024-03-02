@@ -49,6 +49,7 @@ export async function sendMessageToAllGameConnections(
         if (connectionId != null) {
           await deleteConnection(connectionId);
         }
+        return;
       }
       throw error;
     }

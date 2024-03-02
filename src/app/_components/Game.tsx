@@ -1,8 +1,10 @@
 "use client";
 
+import { CheckIcon } from "@heroicons/react/24/solid";
 import { env } from "~/env";
 import {
   nameMaxLength,
+  nameMinLength,
   type ConnectionRecord,
 } from "~/server/db/dynamodb/connection";
 import {
@@ -11,6 +13,7 @@ import {
 } from "~/server/db/dynamodb/gameMeta";
 import {
   promptImageMaxLength,
+  promptImageMinLength,
   type ImageRecord,
 } from "~/server/db/dynamodb/image";
 import type { AnyClientMessage } from "~/server/websocket/messageschema/client2server/any";
@@ -63,7 +66,28 @@ export function Game() {
   const [name, setName] = React.useState<string>("");
   const [gameCode, setGameCode] = React.useState<string>("");
   const [promptImage, setPromptImage] = React.useState<string>("");
+  const imageLoadingRef = React.useRef<ImageLoading>();
   const [imageLoading, setImageLoading] = React.useState<ImageLoading>();
+  const handleImageLoading = React.useCallback(
+    (
+      newImageLoading:
+        | ImageLoading
+        | ((prevImageLoading: ImageLoading | undefined) => ImageLoading),
+    ) => {
+      if (typeof newImageLoading === "function") {
+        newImageLoading = newImageLoading(imageLoadingRef.current);
+      }
+      setImageLoading(newImageLoading);
+      imageLoadingRef.current = newImageLoading;
+    },
+    [],
+  );
+  const myImageRecord =
+    myConnectionRecord != null
+      ? imageRecords.filter(
+          (x) => x.connectionId === myConnectionRecord?.id.split("#")[1],
+        )[0]
+      : undefined;
 
   const [currentTime, setCurrentTime] = React.useState<number>();
   React.useEffect(() => {
@@ -77,13 +101,6 @@ export function Game() {
 
   const wsRef = React.useRef<WebSocket>();
   const [ws, setWs] = React.useState<WebSocket>();
-
-  const myImageRecord =
-    myConnectionRecord != null
-      ? imageRecords.filter(
-          (x) => x.connectionId === myConnectionRecord?.id.split("#")[1],
-        )[0]
-      : undefined;
 
   const [errorMessage, setErrorMessage] = React.useState<string | undefined>();
 
@@ -127,8 +144,8 @@ export function Game() {
         ) {
           console.error("bad request", message);
           setErrorMessage("Bad request");
-          if (imageLoading?.messageId === message.messageId) {
-            setImageLoading((prev) => ({
+          if (imageLoadingRef.current?.messageId === message.messageId) {
+            handleImageLoading((prev) => ({
               loading: false,
               error: true,
               messageId: prev?.messageId ?? "",
@@ -169,13 +186,17 @@ export function Game() {
           );
         } else if (message.action === "progressedGame") {
           setGameMetaRecord(message.dataServer);
+        } else if (message.action === "progressGame") {
+          if (message.dataClient?.status === "lobby") {
+            setPromptImage("");
+          }
         } else if (message.action === "joinGame") {
           setMyConnectionRecord(message.dataServer);
         } else if (message.action === "makeGame") {
           setMyConnectionRecord(message.dataServer);
         } else if (message.action === "makeImage") {
-          if (imageLoading?.messageId === message.messageId) {
-            setImageLoading((prev) => ({
+          if (imageLoadingRef.current?.messageId === message.messageId) {
+            handleImageLoading((prev) => ({
               loading: false,
               error: false,
               messageId: prev?.messageId ?? "",
@@ -217,7 +238,7 @@ export function Game() {
           </h1>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 md:gap-8 justify-items-center w-full">
             <button
-              className="btn btn-primary btn-lg"
+              className="btn btn-primary btn-lg text-white"
               onClick={() => {
                 setOwnedGame(false);
               }}
@@ -264,7 +285,7 @@ export function Game() {
             aria-autocomplete="none"
           />
           <button
-            className="btn btn-primary btn-lg"
+            className="btn btn-primary btn-lg text-white"
             onClick={() => {
               sendMessage({
                 action: "makeGame",
@@ -272,6 +293,7 @@ export function Game() {
                 messageId: uuid(),
               });
             }}
+            disabled={name.length < nameMinLength}
           >
             Make Game
           </button>
@@ -316,7 +338,7 @@ export function Game() {
             aria-autocomplete="none"
           />
           <button
-            className="btn btn-primary btn-lg"
+            className="btn btn-primary btn-lg text-white"
             onClick={() => {
               sendMessage({
                 action: "joinGame",
@@ -324,6 +346,7 @@ export function Game() {
                 messageId: uuid(),
               });
             }}
+            disabled={gameCode.length !== gameCodeLength}
           >
             Join Game
           </button>
@@ -335,13 +358,13 @@ export function Game() {
       content = (
         <>
           <h1 className="text-xl font-extrabold sm:text-3xl">
-            Give your friends the game code: {gameMetaRecord.gameCode}
+            Give friends the game code: {gameMetaRecord.gameCode}
           </h1>
           <h1 className="text-xl font-extrabold sm:text-3xl">
-            Wait for your friends to join...
+            Wait for friends to join...
           </h1>
           <button
-            className="btn btn-primary btn-lg"
+            className="btn btn-primary btn-lg text-white"
             onClick={() => {
               sendMessage({
                 action: "progressGame",
@@ -350,7 +373,9 @@ export function Game() {
               });
             }}
           >
-            Proceed
+            {connectionRecords.length > 1
+              ? "Proceed"
+              : "Proceed without friends"}
           </button>
           <div className="flex gap-3">
             {connectionRecords.map((connectionRecord) => (
@@ -445,10 +470,10 @@ export function Game() {
             }}
           ></textarea>
           <button
-            className="btn btn-primary btn-lg"
+            className="btn btn-primary btn-lg text-white"
             onClick={() => {
               const messageId = uuid();
-              setImageLoading({
+              handleImageLoading({
                 loading: true,
                 error: false,
                 messageId,
@@ -459,8 +484,19 @@ export function Game() {
                 messageId,
               });
             }}
+            disabled={
+              promptImage.length < promptImageMinLength ||
+              (imageLoading?.loading ?? false) ||
+              myImageRecord != null
+            }
           >
-            Make Image
+            {(imageLoading?.loading ?? false) && !imageLoading?.error ? (
+              <span className="loading loading-spinner"></span>
+            ) : myImageRecord != null ? (
+              <CheckIcon className="h-6 w-6" />
+            ) : (
+              "Make Image"
+            )}
           </button>
         </div>
       </div>
@@ -624,7 +660,7 @@ export function Game() {
         <div className="grid grid-flow-row">
           <span>We have a winner!</span>
           <button
-            className="btn btn-primary btn-lg"
+            className="btn btn-primary btn-lg text-white"
             onClick={() => {
               sendMessage({
                 action: "progressGame",

@@ -51,6 +51,7 @@ export async function notifyDeleteConnection(
         if (connectionId != null) {
           await deleteConnection(connectionId);
         }
+        return;
       }
       throw error;
     }
