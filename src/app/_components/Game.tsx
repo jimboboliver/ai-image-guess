@@ -280,7 +280,7 @@ export function Game() {
             className="input input-bordered input-primary input-lg w-full max-w-xs"
             value={name}
             onChange={(e) => {
-              setName(e.target.value.slice(0, nameMaxLength));
+              setName(e.target.value.slice(0, nameMaxLength).trim());
             }}
             aria-autocomplete="none"
           />
@@ -323,7 +323,7 @@ export function Game() {
             value={gameCode}
             onChange={(e) => {
               setGameCode(
-                e.target.value.toUpperCase().slice(0, gameCodeLength),
+                e.target.value.toUpperCase().slice(0, gameCodeLength).trim(),
               );
             }}
             aria-autocomplete="none"
@@ -333,7 +333,7 @@ export function Game() {
             className="input input-bordered input-primary input-lg w-full max-w-xs"
             value={name}
             onChange={(e) => {
-              setName(e.target.value.slice(0, nameMaxLength));
+              setName(e.target.value.slice(0, nameMaxLength).trim());
             }}
             aria-autocomplete="none"
           />
@@ -346,7 +346,9 @@ export function Game() {
                 messageId: uuid(),
               });
             }}
-            disabled={gameCode.length !== gameCodeLength}
+            disabled={
+              gameCode.length !== gameCodeLength || name.length < nameMinLength
+            }
           >
             Join Game
           </button>
@@ -466,7 +468,9 @@ export function Game() {
             placeholder="Your image prompt..."
             value={promptImage}
             onChange={(e) => {
-              setPromptImage(e.target.value.slice(0, promptImageMaxLength));
+              setPromptImage(
+                e.target.value.slice(0, promptImageMaxLength).trim(),
+              );
             }}
           ></textarea>
           <button
@@ -480,7 +484,7 @@ export function Game() {
               });
               sendMessage({
                 action: "makeImage",
-                dataClient: { promptImage },
+                dataClient: { promptImage: promptImage.trim() },
                 messageId,
               });
             }}
