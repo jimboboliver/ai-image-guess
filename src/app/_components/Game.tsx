@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckIcon } from "@heroicons/react/24/solid";
+import { CheckIcon, StarIcon } from "@heroicons/react/24/solid";
 import { env } from "~/env";
 import {
   nameMaxLength,
@@ -63,6 +63,12 @@ export function Game() {
   const [myConnectionRecord, setMyConnectionRecord] =
     React.useState<ConnectionRecord>();
   const [imageRecords, setImageRecords] = React.useState<ImageRecord[]>([]);
+  // find imageRecord with maximum votes in imageRecords
+  const winningImageRecord = imageRecords.reduce(
+    (prev: ImageRecord | undefined, current) =>
+      (prev?.votes ?? 0) > (current.votes ?? 0) ? prev : current,
+    undefined,
+  );
   const [name, setName] = React.useState<string>("");
   const [gameCode, setGameCode] = React.useState<string>("");
   const [promptImage, setPromptImage] = React.useState<string>("");
@@ -202,6 +208,11 @@ export function Game() {
               messageId: prev?.messageId ?? "",
             }));
           }
+        } else if (message.action === "voted") {
+          setMyConnectionRecord(message.dataServer.connectionRecord);
+          setImageRecords((prev) => {
+            return uniqueObjArray(prev, message.dataServer.imageRecord);
+          });
         }
       };
       return wsNew;
@@ -468,9 +479,7 @@ export function Game() {
             placeholder="Your image prompt..."
             value={promptImage}
             onChange={(e) => {
-              setPromptImage(
-                e.target.value.slice(0, promptImageMaxLength).trim(),
-              );
+              setPromptImage(e.target.value.slice(0, promptImageMaxLength));
             }}
           ></textarea>
           <button
@@ -526,24 +535,47 @@ export function Game() {
                   imageRecord.connectionId ===
                   connectionRecord.id.split("#")[1],
               )[0];
+              const isSelected =
+                myConnectionRecord?.votedImageId ===
+                imageRecord?.id.split("#")[1];
               return imageRecord ? (
-                <Image
-                  src={imageRecord?.url}
-                  alt={`${connectionRecord.name}'s image`}
-                  key={connectionRecord.id}
-                  width={128}
-                  height={128}
-                  onClick={() => {
-                    const imageId = imageRecord?.id.split("#")[1];
-                    if (imageId != null) {
-                      sendMessage({
-                        action: "vote",
-                        dataClient: { imageId: imageId },
-                        messageId: uuid(),
-                      });
-                    }
-                  }}
-                />
+                <div className="relative">
+                  <Image
+                    src={imageRecord?.url}
+                    alt={`${connectionRecord.name}'s image`}
+                    key={connectionRecord.id}
+                    width={128}
+                    height={128}
+                    className={`border-2 cursor-pointer ${isSelected ? "border-green-500" : "border-transparent"}`}
+                    onClick={() => {
+                      const imageId = imageRecord?.id.split("#")[1];
+                      if (imageId != null) {
+                        sendMessage({
+                          action: "vote",
+                          dataClient: { imageId: imageId },
+                          messageId: uuid(),
+                        });
+                      }
+                    }}
+                  />
+                  {isSelected && (
+                    <div className="absolute top-2 right-2 w-6 h-6 bg-green-500 flex justify-center items-center">
+                      {/* SVG for the tick mark or use an icon library like FontAwesome */}
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-4 w-4 text-white"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    </div>
+                  )}
+                </div>
               ) : (
                 <span
                   key={connectionRecord.id}
@@ -555,22 +587,43 @@ export function Game() {
             })}
         </div>
         {myImageRecord ? (
-          <Image
-            src={myImageRecord?.url}
-            alt="your image"
-            width={256}
-            height={256}
-            onClick={() => {
-              const imageId = myImageRecord?.id.split("#")[1];
-              if (imageId != null) {
-                sendMessage({
-                  action: "vote",
-                  dataClient: { imageId: imageId },
-                  messageId: uuid(),
-                });
-              }
-            }}
-          />
+          <div className="relative">
+            <Image
+              src={myImageRecord?.url}
+              alt="your image"
+              width={256}
+              height={256}
+              onClick={() => {
+                const imageId = myImageRecord?.id.split("#")[1];
+                if (imageId != null) {
+                  sendMessage({
+                    action: "vote",
+                    dataClient: { imageId: imageId },
+                    messageId: uuid(),
+                  });
+                }
+              }}
+              className={`border-2 cursor-pointer ${myConnectionRecord?.votedImageId === myImageRecord.id.split("#")[1] ? "border-green-500" : "border-transparent"}`}
+            />
+            {myConnectionRecord?.votedImageId ===
+              myImageRecord.id.split("#")[1] && (
+              <div className="absolute top-2 right-2 w-6 h-6 bg-green-500 flex justify-center items-center">
+                {/* SVG for the tick mark or use an icon library like FontAwesome */}
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-4 w-4 text-white"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </div>
+            )}
+          </div>
         ) : (
           <span className="bg-gray-200 w-64 h-64">Your image</span>
         )}
@@ -613,24 +666,31 @@ export function Game() {
                   imageRecord.connectionId ===
                   connectionRecord.id.split("#")[1],
               )[0];
+              const isWinning = winningImageRecord?.id === imageRecord?.id;
               return imageRecord ? (
-                <Image
-                  src={imageRecord?.url}
-                  alt={`${connectionRecord.name}'s image`}
-                  key={connectionRecord.id}
-                  width={128}
-                  height={128}
-                  onClick={() => {
-                    const imageId = imageRecord?.id.split("#")[1];
-                    if (imageId != null) {
-                      sendMessage({
-                        action: "vote",
-                        dataClient: { imageId: imageId },
-                        messageId: uuid(),
-                      });
-                    }
-                  }}
-                />
+                <div className="relative">
+                  <Image
+                    src={imageRecord?.url}
+                    alt={`${connectionRecord.name}'s image`}
+                    key={connectionRecord.id}
+                    width={128}
+                    height={128}
+                    className={`border-2 cursor-pointer ${isWinning ? "border-yellow-500" : "border-transparent"}`}
+                    onClick={() => {
+                      const imageId = imageRecord?.id.split("#")[1];
+                      if (imageId != null) {
+                        sendMessage({
+                          action: "vote",
+                          dataClient: { imageId: imageId },
+                          messageId: uuid(),
+                        });
+                      }
+                    }}
+                  />
+                  {isWinning && (
+                    <StarIcon className="absolute top-2 right-2 h-6 w-6 text-yellow-500" />
+                  )}
+                </div>
               ) : (
                 <span
                   key={connectionRecord.id}
@@ -642,22 +702,18 @@ export function Game() {
             })}
         </div>
         {myImageRecord ? (
-          <Image
-            src={myImageRecord?.url}
-            alt="your image"
-            width={256}
-            height={256}
-            onClick={() => {
-              const imageId = myImageRecord?.id.split("#")[1];
-              if (imageId != null) {
-                sendMessage({
-                  action: "vote",
-                  dataClient: { imageId: imageId },
-                  messageId: uuid(),
-                });
-              }
-            }}
-          />
+          <div className="relative">
+            <Image
+              src={myImageRecord?.url}
+              alt="your image"
+              width={256}
+              height={256}
+              className={`border-2 ${winningImageRecord?.id === myImageRecord.id ? "border-yellow-500" : "border-transparent"}`}
+            />
+            {winningImageRecord?.id === myImageRecord.id && (
+              <StarIcon className="absolute top-2 right-2 h-6 w-6 text-yellow-500" />
+            )}
+          </div>
         ) : (
           <span className="bg-gray-200 w-64 h-64">Your image</span>
         )}
