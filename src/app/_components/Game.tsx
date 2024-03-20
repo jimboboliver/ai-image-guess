@@ -416,7 +416,7 @@ export function Game() {
             onChange={(e) => {
               setPromptImage(e.target.value.slice(0, promptImageMaxLength));
             }}
-            disabled={imageLoading != null}
+            disabled={imageLoading?.loading}
           ></textarea>
           <button
             className="btn btn-primary btn-lg text-white"
@@ -465,6 +465,7 @@ export function Game() {
           myConnectionRecord={myConnectionRecord}
           imageRecords={imageRecords}
           myImageRecord={myImageRecord}
+          imageLoading={imageLoading}
           sendMessage={sendMessage}
           setErrorMessage={setErrorMessage}
         />
@@ -492,6 +493,7 @@ export function Game() {
           myConnectionRecord={myConnectionRecord}
           imageRecords={imageRecords}
           myImageRecord={myImageRecord}
+          imageLoading={imageLoading}
           winningImageRecord={
             !winningImageRecord?.votes ? undefined : winningImageRecord
           }
@@ -563,8 +565,8 @@ function Collage({
   connectionRecords: ConnectionRecord[];
   myConnectionRecord?: ConnectionRecord;
   imageRecords: ImageRecord[];
-  myImageRecord?: ImageRecord;
-  imageLoading?: ImageLoading;
+  myImageRecord: ImageRecord | undefined;
+  imageLoading: ImageLoading | undefined;
 }) {
   return (
     <>
@@ -601,8 +603,10 @@ function Collage({
           width={256}
           height={256}
         />
-      ) : imageLoading ? (
+      ) : imageLoading?.loading ? (
         <div className="skeleton w-64 h-64"></div>
+      ) : imageLoading?.error ? (
+        <div className="bg-gray-200 w-64 h-64">Try again!</div>
       ) : (
         <span className="bg-gray-200 w-64 h-64">Your image</span>
       )}
@@ -615,13 +619,15 @@ function SelectableCollage({
   myConnectionRecord,
   imageRecords,
   myImageRecord,
+  imageLoading,
   sendMessage,
   setErrorMessage,
 }: {
   connectionRecords: ConnectionRecord[];
   myConnectionRecord?: ConnectionRecord;
   imageRecords: ImageRecord[];
-  myImageRecord?: ImageRecord;
+  myImageRecord: ImageRecord | undefined;
+  imageLoading: ImageLoading | undefined;
   sendMessage: (data: AnyClientMessage) => void;
   setErrorMessage: (message: string | undefined) => void;
 }) {
@@ -726,8 +732,12 @@ function SelectableCollage({
             </div>
           )}
         </div>
+      ) : imageLoading?.loading ? (
+        <div className="skeleton w-64 h-64"></div>
+      ) : imageLoading?.error ? (
+        <div className="bg-gray-200 w-64 h-64">Try again!</div>
       ) : (
-        <span className="bg-gray-200 w-64 h-64">Your image</span>
+        <span className="bg-gray-200 w-64 h-64">No image generated :-(</span>
       )}
     </>
   );
@@ -738,6 +748,7 @@ function WinnerCollage({
   myConnectionRecord,
   imageRecords,
   myImageRecord,
+  imageLoading,
   winningImageRecord,
   sendMessage,
   setErrorMessage,
@@ -745,7 +756,8 @@ function WinnerCollage({
   connectionRecords: ConnectionRecord[];
   myConnectionRecord?: ConnectionRecord;
   imageRecords: ImageRecord[];
-  myImageRecord?: ImageRecord;
+  myImageRecord: ImageRecord | undefined;
+  imageLoading: ImageLoading | undefined;
   winningImageRecord?: ImageRecord;
   sendMessage: (data: AnyClientMessage) => void;
   setErrorMessage: (message: string | undefined) => void;
@@ -809,8 +821,12 @@ function WinnerCollage({
             <StarIcon className="absolute top-2 right-2 h-6 w-6 text-yellow-500" />
           )}
         </div>
+      ) : imageLoading?.loading ? (
+        <div className="skeleton w-64 h-64"></div>
+      ) : imageLoading?.error ? (
+        <div className="bg-gray-200 w-64 h-64">Try again!</div>
       ) : (
-        <span className="bg-gray-200 w-64 h-64">Your image</span>
+        <span className="bg-gray-200 w-64 h-64">No image generated :-(</span>
       )}
     </>
   );
