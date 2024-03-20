@@ -396,7 +396,6 @@ export function Game() {
     gameMetaRecord.status === "playing" &&
     (currentTime ?? 0) < (gameMetaRecord.timestamps?.timestampEndPlay ?? 0)
   ) {
-    console.log(imageLoading?.loading);
     content = (
       <div className="grid grid-rows-[1fr_1fr_1fr]">
         <Collage
@@ -485,6 +484,7 @@ export function Game() {
     gameMetaRecord.status === "playing" &&
     (currentTime ?? 0) >= (gameMetaRecord.timestamps?.timestampEndVote ?? 0)
   ) {
+    console.log(winningImageRecord?.votes);
     content = (
       <div className="grid grid-rows-[1fr_1fr_1fr]">
         <WinnerCollage
@@ -492,12 +492,18 @@ export function Game() {
           myConnectionRecord={myConnectionRecord}
           imageRecords={imageRecords}
           myImageRecord={myImageRecord}
-          winningImageRecord={winningImageRecord}
+          winningImageRecord={
+            !winningImageRecord?.votes ? undefined : winningImageRecord
+          }
           sendMessage={sendMessage}
           setErrorMessage={setErrorMessage}
         />
         <div className="grid grid-flow-row">
-          <span>We have a winner!</span>
+          <span>
+            {!winningImageRecord?.votes
+              ? "No-one voted :-("
+              : "We have a winner!"}
+          </span>
           <button
             className="btn btn-primary btn-lg text-white"
             onClick={() => {
