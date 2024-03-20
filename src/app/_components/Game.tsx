@@ -76,20 +76,6 @@ export function Game() {
   const [promptImage, setPromptImage] = React.useState<string>("");
   const imageLoadingRef = React.useRef<MessageLoading>();
   const [imageLoading, setImageLoading] = React.useState<MessageLoading>();
-  const handleImageLoading = React.useCallback(
-    (
-      newImageLoading:
-        | MessageLoading
-        | ((prevImageLoading: MessageLoading | undefined) => MessageLoading),
-    ) => {
-      if (typeof newImageLoading === "function") {
-        newImageLoading = newImageLoading(imageLoadingRef.current);
-      }
-      setImageLoading(newImageLoading);
-      imageLoadingRef.current = newImageLoading;
-    },
-    [],
-  );
   const myImageRecord =
     myConnectionRecord != null
       ? imageRecords.filter(
@@ -99,17 +85,25 @@ export function Game() {
   const gameMetaLoadingRef = React.useRef<MessageLoading>();
   const [gameMetaLoading, setGameMetaLoading] =
     React.useState<MessageLoading>();
-  const handleGameMetaLoading = React.useCallback(
+  const gameJoinLoadingRef = React.useRef<MessageLoading>();
+  const [gameJoinLoading, setGameJoinLoading] =
+    React.useState<MessageLoading>();
+
+  const handleMessageLoading = React.useCallback(
     (
-      newGameMetaLoading:
+      newMessageLoading:
         | MessageLoading
-        | ((prevGameMetaLoading: MessageLoading | undefined) => MessageLoading),
+        | ((prevMessageLoading: MessageLoading | undefined) => MessageLoading),
+      setMessageLoading: React.Dispatch<
+        React.SetStateAction<MessageLoading | undefined>
+      >,
+      messageLoadingRef: React.MutableRefObject<MessageLoading | undefined>,
     ) => {
-      if (typeof newGameMetaLoading === "function") {
-        newGameMetaLoading = newGameMetaLoading(gameMetaLoadingRef.current);
+      if (typeof newMessageLoading === "function") {
+        newMessageLoading = newMessageLoading(messageLoadingRef.current);
       }
-      setGameMetaLoading(newGameMetaLoading);
-      gameMetaLoadingRef.current = newGameMetaLoading;
+      setMessageLoading(newMessageLoading);
+      messageLoadingRef.current = newMessageLoading;
     },
     [],
   );
@@ -179,19 +173,27 @@ export function Game() {
           console.error("bad request", message);
           setErrorMessage("Bad request");
           if (imageLoadingRef.current?.messageId === message.messageId) {
-            handleImageLoading((prev) => ({
-              loading: false,
-              error: true,
-              messageId: prev?.messageId ?? "",
-            }));
+            handleMessageLoading(
+              (prev) => ({
+                loading: false,
+                error: true,
+                messageId: prev?.messageId ?? "",
+              }),
+              setImageLoading,
+              imageLoadingRef,
+            );
           } else if (
             gameMetaLoadingRef.current?.messageId === message.messageId
           ) {
-            handleGameMetaLoading((prev) => ({
-              loading: false,
-              error: true,
-              messageId: prev?.messageId ?? "",
-            }));
+            handleMessageLoading(
+              (prev) => ({
+                loading: false,
+                error: true,
+                messageId: prev?.messageId ?? "",
+              }),
+              setGameMetaLoading,
+              gameMetaLoadingRef,
+            );
           }
         } else if ("message" in message) {
           // internal server error message
@@ -238,22 +240,41 @@ export function Game() {
           }
         } else if (message.action === "joinGame") {
           setMyConnectionRecord(message.dataServer);
+          if (gameMetaLoadingRef.current?.messageId === message.messageId) {
+            handleMessageLoading(
+              (prev) => ({
+                loading: false,
+                error: false,
+                messageId: prev?.messageId ?? "",
+              }),
+              setGameJoinLoading,
+              gameJoinLoadingRef,
+            );
+          }
         } else if (message.action === "makeGame") {
           setMyConnectionRecord(message.dataServer);
           if (gameMetaLoadingRef.current?.messageId === message.messageId) {
-            handleGameMetaLoading((prev) => ({
-              loading: false,
-              error: false,
-              messageId: prev?.messageId ?? "",
-            }));
+            handleMessageLoading(
+              (prev) => ({
+                loading: false,
+                error: false,
+                messageId: prev?.messageId ?? "",
+              }),
+              setGameMetaLoading,
+              gameMetaLoadingRef,
+            );
           }
         } else if (message.action === "makeImage") {
           if (imageLoadingRef.current?.messageId === message.messageId) {
-            handleImageLoading((prev) => ({
-              loading: false,
-              error: false,
-              messageId: prev?.messageId ?? "",
-            }));
+            handleMessageLoading(
+              (prev) => ({
+                loading: false,
+                error: false,
+                messageId: prev?.messageId ?? "",
+              }),
+              setImageLoading,
+              imageLoadingRef,
+            );
           }
         } else if (message.action === "voted") {
           setMyConnectionRecord(message.dataServer.connectionRecord);
@@ -334,11 +355,15 @@ export function Game() {
             onClick={() => {
               setErrorMessage(undefined);
               const messageId = uuid();
-              handleGameMetaLoading({
-                loading: true,
-                error: false,
-                messageId,
-              });
+              handleMessageLoading(
+                {
+                  loading: true,
+                  error: false,
+                  messageId,
+                },
+                setGameMetaLoading,
+                gameMetaLoadingRef,
+              );
               sendMessage({
                 action: "makeGame",
                 dataClient: { name },
@@ -389,17 +414,36 @@ export function Game() {
             className="btn btn-primary btn-lg text-white"
             onClick={() => {
               setErrorMessage(undefined);
+              const messageId = uuid();
+              handleMessageLoading(
+                {
+                  loading: true,
+                  error: false,
+                  messageId,
+                },
+                setGameJoinLoading,
+                gameJoinLoadingRef,
+              );
               sendMessage({
                 action: "joinGame",
                 dataClient: { name, gameCode },
-                messageId: uuid(),
+                messageId: messageId,
               });
             }}
             disabled={
-              gameCode.length !== gameCodeLength || name.length < nameMinLength
+              gameCode.length !== gameCodeLength ||
+              name.length < nameMinLength ||
+              (gameJoinLoading?.loading ?? false) ||
+              gameMetaRecord != null
             }
           >
-            Join Game
+            {(gameJoinLoading?.loading ?? false) && !gameJoinLoading?.error ? (
+              <span className="loading loading-spinner"></span>
+            ) : gameMetaRecord != null ? (
+              <CheckIcon className="h-6 w-6" />
+            ) : (
+              "Join Game"
+            )}
           </button>
         </>
       );
@@ -483,11 +527,15 @@ export function Game() {
             onClick={() => {
               setErrorMessage(undefined);
               const messageId = uuid();
-              handleImageLoading({
-                loading: true,
-                error: false,
-                messageId,
-              });
+              handleMessageLoading(
+                {
+                  loading: true,
+                  error: false,
+                  messageId,
+                },
+                setImageLoading,
+                imageLoadingRef,
+              );
               sendMessage({
                 action: "makeImage",
                 dataClient: { promptImage: promptImage.trim() },
