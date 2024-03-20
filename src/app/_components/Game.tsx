@@ -116,11 +116,20 @@ export function Game() {
     const openWebSocket = () => {
       console.debug("Opening websocket");
       const wsNew = new WebSocket(env.NEXT_PUBLIC_API_ENDPOINT_WEBSOCKET);
+      const intervalHeartBeat = setInterval(
+        () => {
+          if (wsNew.readyState === wsNew.OPEN) {
+            wsNew.send(JSON.stringify({ action: "heartBeat" }));
+          }
+        },
+        1000 * 60 * 5,
+      );
       wsNew.onopen = () => {
         console.debug("ws open");
       };
       wsNew.onclose = () => {
         console.debug("ws close");
+        clearInterval(intervalHeartBeat);
         if (isMounted.current) {
           setTimeout(() => {
             const newWs = openWebSocket();

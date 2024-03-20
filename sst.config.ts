@@ -43,6 +43,13 @@ export default {
             },
             returnResponse: true,
           },
+          hearBeat: {
+            function: {
+              handler: "src/server/websocket/heartBeat.main",
+              timeout: 30,
+            },
+            returnResponse: true,
+          },
           joinGame: {
             function: {
               handler: "src/server/websocket/joinGame.main",
