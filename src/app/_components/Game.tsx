@@ -161,6 +161,10 @@ export function Game() {
           return;
         }
         console.debug("e", e);
+        if (!e.data) {
+          console.debug("Assuming heartbeat response");
+          return;
+        }
         const message = JSON.parse(e.data) as AnyServer2ClientMessage;
         console.debug("ws message", JSON.stringify(message, null, 2));
         try {
@@ -575,12 +579,12 @@ export function Game() {
             disabled={
               promptImage.length < promptImageMinLength ||
               (imageLoading?.loading ?? false) ||
-              myImageRecord != null
+              (myImageRecord != null && !myImageRecord?.error)
             }
           >
-            {(imageLoading?.loading ?? false) && !imageLoading?.error ? (
+            {imageLoading?.loading ? (
               <span className="loading loading-spinner"></span>
-            ) : myImageRecord != null ? (
+            ) : myImageRecord != null && !myImageRecord?.error ? (
               <CheckIcon className="h-6 w-6" />
             ) : (
               "Make Image"
