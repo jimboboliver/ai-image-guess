@@ -26,6 +26,8 @@ import React from "react";
 import { v4 as uuid } from "uuid";
 
 import { Avatar } from "./Avatar";
+import { BackButton } from "./BackButton";
+import { Countdown } from "./Countdown";
 
 function uniqueObjArray<T extends Record<string, unknown>>(
   arr: T[],
@@ -260,6 +262,7 @@ export function Game() {
             <button
               className="btn btn-secondary btn-lg"
               onClick={() => {
+                setErrorMessage(undefined);
                 setOwnedGame(true);
               }}
             >
@@ -271,21 +274,7 @@ export function Game() {
     } else if (ownedGame) {
       content = (
         <>
-          <button
-            className="btn btn-outline absolute top-6 left-6"
-            onClick={() => setOwnedGame(undefined)}
-          >
-            <svg
-              className="h-6 w-6 fill-current md:h-8 md:w-8"
-              xmlns="http://www.w3.org/2000/svg"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-            >
-              <path d="M15.41,16.58L10.83,12L15.41,7.41L14,6L8,12L14,18L15.41,16.58Z"></path>
-            </svg>
-            Back
-          </button>
+          <BackButton onClick={() => setOwnedGame(undefined)} />
           <input
             placeholder="Enter your name"
             className="input input-bordered input-primary input-lg w-full max-w-xs"
@@ -298,6 +287,7 @@ export function Game() {
           <button
             className="btn btn-primary btn-lg text-white"
             onClick={() => {
+              setErrorMessage(undefined);
               sendMessage({
                 action: "makeGame",
                 dataClient: { name },
@@ -313,21 +303,7 @@ export function Game() {
     } else {
       content = (
         <>
-          <button
-            className="btn btn-outline absolute top-6 left-6"
-            onClick={() => setOwnedGame(undefined)}
-          >
-            <svg
-              className="h-6 w-6 fill-current md:h-8 md:w-8"
-              xmlns="http://www.w3.org/2000/svg"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-            >
-              <path d="M15.41,16.58L10.83,12L15.41,7.41L14,6L8,12L14,18L15.41,16.58Z"></path>
-            </svg>
-            Back
-          </button>
+          <BackButton onClick={() => setOwnedGame(undefined)} />
           <input
             placeholder="Enter game code"
             className="input input-bordered input-primary input-lg w-full max-w-xs"
@@ -351,6 +327,7 @@ export function Game() {
           <button
             className="btn btn-primary btn-lg text-white"
             onClick={() => {
+              setErrorMessage(undefined);
               sendMessage({
                 action: "joinGame",
                 dataClient: { name, gameCode },
@@ -379,6 +356,7 @@ export function Game() {
           <button
             className="btn btn-primary btn-lg text-white"
             onClick={() => {
+              setErrorMessage(undefined);
               sendMessage({
                 action: "progressGame",
                 dataClient: { status: "playing" },
@@ -418,62 +396,20 @@ export function Game() {
     gameMetaRecord.status === "playing" &&
     (currentTime ?? 0) < (gameMetaRecord.timestamps?.timestampEndPlay ?? 0)
   ) {
+    console.log(imageLoading?.loading);
     content = (
       <div className="grid grid-rows-[1fr_1fr_1fr]">
-        <div className="grid auto-rows-auto grid-cols-2">
-          {connectionRecords
-            .filter(
-              (connectionRecord) =>
-                myConnectionRecord?.id !== connectionRecord.id,
-            )
-            .map((connectionRecord) => {
-              const imageRecord = imageRecords.filter(
-                (imageRecord) =>
-                  imageRecord.connectionId ===
-                  connectionRecord.id.split("#")[1],
-              )[0];
-              return imageRecord ? (
-                <Image
-                  src={imageRecord?.url}
-                  alt={`${connectionRecord.name}'s image`}
-                  key={connectionRecord.id}
-                  width={128}
-                  height={128}
-                />
-              ) : (
-                <span
-                  key={connectionRecord.id}
-                  className="bg-gray-200 w-32 h-32"
-                >
-                  {connectionRecord.name}'s image
-                </span>
-              );
-            })}
-        </div>
-        {myImageRecord ? (
-          <Image
-            src={myImageRecord?.url}
-            alt="your image"
-            width={256}
-            height={256}
-          />
-        ) : imageLoading ? (
-          <div className="skeleton w-64 h-64"></div>
-        ) : (
-          <span className="bg-gray-200 w-64 h-64">Your image</span>
-        )}
+        <Collage
+          connectionRecords={connectionRecords}
+          myConnectionRecord={myConnectionRecord}
+          imageRecords={imageRecords}
+          myImageRecord={myImageRecord}
+          imageLoading={imageLoading}
+        />
         <div className="grid grid-flow-row">
-          <span className="countdown font-mono text-6xl">
-            <span
-              style={
-                {
-                  "--value":
-                    (gameMetaRecord.timestamps?.timestampEndPlay ?? 0) -
-                    (currentTime ?? 0),
-                } as React.CSSProperties
-              }
-            ></span>
-          </span>
+          <Countdown
+            timestampEnd={gameMetaRecord.timestamps?.timestampEndPlay ?? 0}
+          />
           <textarea
             className="textarea textarea-primary"
             placeholder="Your image prompt..."
@@ -481,10 +417,12 @@ export function Game() {
             onChange={(e) => {
               setPromptImage(e.target.value.slice(0, promptImageMaxLength));
             }}
+            disabled={imageLoading != null}
           ></textarea>
           <button
             className="btn btn-primary btn-lg text-white"
             onClick={() => {
+              setErrorMessage(undefined);
               const messageId = uuid();
               handleImageLoading({
                 loading: true,
@@ -523,123 +461,18 @@ export function Game() {
   ) {
     content = (
       <div className="grid grid-rows-[1fr_1fr_1fr]">
-        <div className="grid auto-rows-auto grid-cols-2">
-          {connectionRecords
-            .filter(
-              (connectionRecord) =>
-                myConnectionRecord?.id !== connectionRecord.id,
-            )
-            .map((connectionRecord) => {
-              const imageRecord = imageRecords.filter(
-                (imageRecord) =>
-                  imageRecord.connectionId ===
-                  connectionRecord.id.split("#")[1],
-              )[0];
-              const isSelected =
-                myConnectionRecord?.votedImageId ===
-                imageRecord?.id.split("#")[1];
-              return imageRecord ? (
-                <div className="relative">
-                  <Image
-                    src={imageRecord?.url}
-                    alt={`${connectionRecord.name}'s image`}
-                    key={connectionRecord.id}
-                    width={128}
-                    height={128}
-                    className={`border-2 cursor-pointer ${isSelected ? "border-green-500" : "border-transparent"}`}
-                    onClick={() => {
-                      const imageId = imageRecord?.id.split("#")[1];
-                      if (imageId != null) {
-                        sendMessage({
-                          action: "vote",
-                          dataClient: { imageId: imageId },
-                          messageId: uuid(),
-                        });
-                      }
-                    }}
-                  />
-                  {isSelected && (
-                    <div className="absolute top-2 right-2 w-6 h-6 bg-green-500 flex justify-center items-center">
-                      {/* SVG for the tick mark or use an icon library like FontAwesome */}
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-4 w-4 text-white"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <span
-                  key={connectionRecord.id}
-                  className="bg-gray-200 w-32 h-32"
-                >
-                  {connectionRecord.name}'s image
-                </span>
-              );
-            })}
-        </div>
-        {myImageRecord ? (
-          <div className="relative">
-            <Image
-              src={myImageRecord?.url}
-              alt="your image"
-              width={256}
-              height={256}
-              onClick={() => {
-                const imageId = myImageRecord?.id.split("#")[1];
-                if (imageId != null) {
-                  sendMessage({
-                    action: "vote",
-                    dataClient: { imageId: imageId },
-                    messageId: uuid(),
-                  });
-                }
-              }}
-              className={`border-2 cursor-pointer ${myConnectionRecord?.votedImageId === myImageRecord.id.split("#")[1] ? "border-green-500" : "border-transparent"}`}
-            />
-            {myConnectionRecord?.votedImageId ===
-              myImageRecord.id.split("#")[1] && (
-              <div className="absolute top-2 right-2 w-6 h-6 bg-green-500 flex justify-center items-center">
-                {/* SVG for the tick mark or use an icon library like FontAwesome */}
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-4 w-4 text-white"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-              </div>
-            )}
-          </div>
-        ) : (
-          <span className="bg-gray-200 w-64 h-64">Your image</span>
-        )}
+        <SelectableCollage
+          connectionRecords={connectionRecords}
+          myConnectionRecord={myConnectionRecord}
+          imageRecords={imageRecords}
+          myImageRecord={myImageRecord}
+          sendMessage={sendMessage}
+          setErrorMessage={setErrorMessage}
+        />
         <div className="grid grid-flow-row">
-          <span className="countdown font-mono text-6xl">
-            <span
-              style={
-                {
-                  "--value": Math.floor(
-                    (gameMetaRecord.timestamps?.timestampEndVote ?? 0) -
-                      (currentTime ?? 0),
-                  ),
-                } as React.CSSProperties
-              }
-            ></span>
-          </span>
+          <Countdown
+            timestampEnd={gameMetaRecord.timestamps?.timestampEndVote ?? 0}
+          />
           <span>Vote for the best image!</span>
           <span>Press one</span>
         </div>
@@ -654,74 +487,21 @@ export function Game() {
   ) {
     content = (
       <div className="grid grid-rows-[1fr_1fr_1fr]">
-        <div className="grid auto-rows-auto grid-cols-2">
-          {connectionRecords
-            .filter(
-              (connectionRecord) =>
-                myConnectionRecord?.id !== connectionRecord.id,
-            )
-            .map((connectionRecord) => {
-              const imageRecord = imageRecords.filter(
-                (imageRecord) =>
-                  imageRecord.connectionId ===
-                  connectionRecord.id.split("#")[1],
-              )[0];
-              const isWinning = winningImageRecord?.id === imageRecord?.id;
-              return imageRecord ? (
-                <div className="relative">
-                  <Image
-                    src={imageRecord?.url}
-                    alt={`${connectionRecord.name}'s image`}
-                    key={connectionRecord.id}
-                    width={128}
-                    height={128}
-                    className={`border-2 cursor-pointer ${isWinning ? "border-yellow-500" : "border-transparent"}`}
-                    onClick={() => {
-                      const imageId = imageRecord?.id.split("#")[1];
-                      if (imageId != null) {
-                        sendMessage({
-                          action: "vote",
-                          dataClient: { imageId: imageId },
-                          messageId: uuid(),
-                        });
-                      }
-                    }}
-                  />
-                  {isWinning && (
-                    <StarIcon className="absolute top-2 right-2 h-6 w-6 text-yellow-500" />
-                  )}
-                </div>
-              ) : (
-                <span
-                  key={connectionRecord.id}
-                  className="bg-gray-200 w-32 h-32"
-                >
-                  {connectionRecord.name}'s image
-                </span>
-              );
-            })}
-        </div>
-        {myImageRecord ? (
-          <div className="relative">
-            <Image
-              src={myImageRecord?.url}
-              alt="your image"
-              width={256}
-              height={256}
-              className={`border-2 ${winningImageRecord?.id === myImageRecord.id ? "border-yellow-500" : "border-transparent"}`}
-            />
-            {winningImageRecord?.id === myImageRecord.id && (
-              <StarIcon className="absolute top-2 right-2 h-6 w-6 text-yellow-500" />
-            )}
-          </div>
-        ) : (
-          <span className="bg-gray-200 w-64 h-64">Your image</span>
-        )}
+        <WinnerCollage
+          connectionRecords={connectionRecords}
+          myConnectionRecord={myConnectionRecord}
+          imageRecords={imageRecords}
+          myImageRecord={myImageRecord}
+          winningImageRecord={winningImageRecord}
+          sendMessage={sendMessage}
+          setErrorMessage={setErrorMessage}
+        />
         <div className="grid grid-flow-row">
           <span>We have a winner!</span>
           <button
             className="btn btn-primary btn-lg text-white"
             onClick={() => {
+              setErrorMessage(undefined);
               sendMessage({
                 action: "progressGame",
                 dataClient: { status: "lobby" },
@@ -764,5 +544,268 @@ export function Game() {
         <span>{errorMessage}</span>
       </div>
     </div>
+  );
+}
+
+function Collage({
+  connectionRecords,
+  myConnectionRecord,
+  imageRecords,
+  myImageRecord,
+  imageLoading,
+}: {
+  connectionRecords: ConnectionRecord[];
+  myConnectionRecord?: ConnectionRecord;
+  imageRecords: ImageRecord[];
+  myImageRecord?: ImageRecord;
+  imageLoading?: ImageLoading;
+}) {
+  return (
+    <>
+      <div className="grid auto-rows-auto grid-cols-2">
+        {connectionRecords
+          .filter(
+            (connectionRecord) =>
+              myConnectionRecord?.id !== connectionRecord.id,
+          )
+          .map((connectionRecord) => {
+            const imageRecord = imageRecords.filter(
+              (imageRecord) =>
+                imageRecord.connectionId === connectionRecord.id.split("#")[1],
+            )[0];
+            return imageRecord ? (
+              <Image
+                src={imageRecord?.url}
+                alt={`${connectionRecord.name}'s image`}
+                key={connectionRecord.id}
+                width={128}
+                height={128}
+              />
+            ) : (
+              <span key={connectionRecord.id} className="bg-gray-200 w-32 h-32">
+                {connectionRecord.name}'s image
+              </span>
+            );
+          })}
+      </div>
+      {myImageRecord ? (
+        <Image
+          src={myImageRecord?.url}
+          alt="your image"
+          width={256}
+          height={256}
+        />
+      ) : imageLoading ? (
+        <div className="skeleton w-64 h-64"></div>
+      ) : (
+        <span className="bg-gray-200 w-64 h-64">Your image</span>
+      )}
+    </>
+  );
+}
+
+function SelectableCollage({
+  connectionRecords,
+  myConnectionRecord,
+  imageRecords,
+  myImageRecord,
+  sendMessage,
+  setErrorMessage,
+}: {
+  connectionRecords: ConnectionRecord[];
+  myConnectionRecord?: ConnectionRecord;
+  imageRecords: ImageRecord[];
+  myImageRecord?: ImageRecord;
+  sendMessage: (data: AnyClientMessage) => void;
+  setErrorMessage: (message: string | undefined) => void;
+}) {
+  return (
+    <>
+      <div className="grid auto-rows-auto grid-cols-2">
+        {connectionRecords
+          .filter(
+            (connectionRecord) =>
+              myConnectionRecord?.id !== connectionRecord.id,
+          )
+          .map((connectionRecord) => {
+            const imageRecord = imageRecords.filter(
+              (imageRecord) =>
+                imageRecord.connectionId === connectionRecord.id.split("#")[1],
+            )[0];
+            const isSelected =
+              myConnectionRecord?.votedImageId ===
+              imageRecord?.id.split("#")[1];
+            return imageRecord ? (
+              <div className="relative">
+                <Image
+                  src={imageRecord?.url}
+                  alt={`${connectionRecord.name}'s image`}
+                  key={connectionRecord.id}
+                  width={128}
+                  height={128}
+                  className={`border-2 cursor-pointer ${isSelected ? "border-green-500" : "border-transparent"}`}
+                  onClick={() => {
+                    const imageId = imageRecord?.id.split("#")[1];
+                    if (imageId != null) {
+                      setErrorMessage(undefined);
+                      sendMessage({
+                        action: "vote",
+                        dataClient: { imageId: imageId },
+                        messageId: uuid(),
+                      });
+                    }
+                  }}
+                />
+                {isSelected && (
+                  <div className="absolute top-2 right-2 w-6 h-6 bg-green-500 flex justify-center items-center">
+                    {/* SVG for the tick mark or use an icon library like FontAwesome */}
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-4 w-4 text-white"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <span key={connectionRecord.id} className="bg-gray-200 w-32 h-32">
+                {connectionRecord.name}'s image
+              </span>
+            );
+          })}
+      </div>
+      {myImageRecord ? (
+        <div className="relative">
+          <Image
+            src={myImageRecord?.url}
+            alt="your image"
+            width={256}
+            height={256}
+            onClick={() => {
+              const imageId = myImageRecord?.id.split("#")[1];
+              if (imageId != null) {
+                setErrorMessage(undefined);
+                sendMessage({
+                  action: "vote",
+                  dataClient: { imageId: imageId },
+                  messageId: uuid(),
+                });
+              }
+            }}
+            className={`border-2 cursor-pointer ${myConnectionRecord?.votedImageId === myImageRecord.id.split("#")[1] ? "border-green-500" : "border-transparent"}`}
+          />
+          {myConnectionRecord?.votedImageId ===
+            myImageRecord.id.split("#")[1] && (
+            <div className="absolute top-2 right-2 w-6 h-6 bg-green-500 flex justify-center items-center">
+              {/* SVG for the tick mark or use an icon library like FontAwesome */}
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4 text-white"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </div>
+          )}
+        </div>
+      ) : (
+        <span className="bg-gray-200 w-64 h-64">Your image</span>
+      )}
+    </>
+  );
+}
+
+function WinnerCollage({
+  connectionRecords,
+  myConnectionRecord,
+  imageRecords,
+  myImageRecord,
+  winningImageRecord,
+  sendMessage,
+  setErrorMessage,
+}: {
+  connectionRecords: ConnectionRecord[];
+  myConnectionRecord?: ConnectionRecord;
+  imageRecords: ImageRecord[];
+  myImageRecord?: ImageRecord;
+  winningImageRecord?: ImageRecord;
+  sendMessage: (data: AnyClientMessage) => void;
+  setErrorMessage: (message: string | undefined) => void;
+}) {
+  return (
+    <>
+      <div className="grid auto-rows-auto grid-cols-2">
+        {connectionRecords
+          .filter(
+            (connectionRecord) =>
+              myConnectionRecord?.id !== connectionRecord.id,
+          )
+          .map((connectionRecord) => {
+            const imageRecord = imageRecords.filter(
+              (imageRecord) =>
+                imageRecord.connectionId === connectionRecord.id.split("#")[1],
+            )[0];
+            const isWinning = winningImageRecord?.id === imageRecord?.id;
+            return imageRecord ? (
+              <div className="relative">
+                <Image
+                  src={imageRecord?.url}
+                  alt={`${connectionRecord.name}'s image`}
+                  key={connectionRecord.id}
+                  width={128}
+                  height={128}
+                  className={`border-2 cursor-pointer ${isWinning ? "border-yellow-500" : "border-transparent"}`}
+                  onClick={() => {
+                    const imageId = imageRecord?.id.split("#")[1];
+                    if (imageId != null) {
+                      setErrorMessage(undefined);
+                      sendMessage({
+                        action: "vote",
+                        dataClient: { imageId: imageId },
+                        messageId: uuid(),
+                      });
+                    }
+                  }}
+                />
+                {isWinning && (
+                  <StarIcon className="absolute top-2 right-2 h-6 w-6 text-yellow-500" />
+                )}
+              </div>
+            ) : (
+              <span key={connectionRecord.id} className="bg-gray-200 w-32 h-32">
+                {connectionRecord.name}'s image
+              </span>
+            );
+          })}
+      </div>
+      {myImageRecord ? (
+        <div className="relative">
+          <Image
+            src={myImageRecord?.url}
+            alt="your image"
+            width={256}
+            height={256}
+            className={`border-2 ${winningImageRecord?.id === myImageRecord.id ? "border-yellow-500" : "border-transparent"}`}
+          />
+          {winningImageRecord?.id === myImageRecord.id && (
+            <StarIcon className="absolute top-2 right-2 h-6 w-6 text-yellow-500" />
+          )}
+        </div>
+      ) : (
+        <span className="bg-gray-200 w-64 h-64">Your image</span>
+      )}
+    </>
   );
 }
