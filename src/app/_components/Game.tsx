@@ -648,11 +648,10 @@ function SelectableCollage({
               myConnectionRecord?.votedImageId ===
               imageRecord?.id.split("#")[1];
             return imageRecord ? (
-              <div className="relative">
+              <div className="relative" key={connectionRecord.id}>
                 <Image
                   src={imageRecord?.url}
                   alt={`${connectionRecord.name}'s image`}
-                  key={connectionRecord.id}
                   width={128}
                   height={128}
                   className={`border-2 cursor-pointer ${isSelected ? "border-green-500" : "border-transparent"}`}
@@ -777,11 +776,10 @@ function WinnerCollage({
             )[0];
             const isWinning = winningImageRecord?.id === imageRecord?.id;
             return imageRecord ? (
-              <div className="relative">
+              <div className="relative" key={connectionRecord.id}>
                 <Image
                   src={imageRecord?.url}
                   alt={`${connectionRecord.name}'s image`}
-                  key={connectionRecord.id}
                   width={128}
                   height={128}
                   className={`border-2 cursor-pointer ${isWinning ? "border-yellow-500" : "border-transparent"}`}
