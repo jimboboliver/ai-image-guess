@@ -487,7 +487,6 @@ export function Game() {
     gameMetaRecord.status === "playing" &&
     (currentTime ?? 0) >= (gameMetaRecord.timestamps?.timestampEndVote ?? 0)
   ) {
-    console.log(winningImageRecord?.votes);
     content = (
       <div className="grid grid-rows-[1fr_1fr_1fr]">
         <WinnerCollage
