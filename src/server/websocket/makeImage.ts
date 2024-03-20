@@ -131,6 +131,32 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
     connectionResponse.Items[0]!,
   ) as ConnectionRecord;
 
+  // put image record into db while it's loading
+  const imageRecord: ImageRecord = {
+    game: connectionRecord.game,
+    id: `image#${uuidv4()}`,
+    connectionId: event.requestContext.connectionId,
+    promptImage: message.dataClient.promptImage,
+    loading: true,
+  };
+  await ddbClient.send(
+    new PutItemCommand({
+      TableName: Table.chimpin.tableName,
+      Item: marshall(imageRecord),
+    }),
+  );
+  if (apiClient == null) {
+    apiClient = new ApiGatewayManagementApiClient({
+      endpoint: `https://${event.requestContext.domainName}/${event.requestContext.stage}`,
+    });
+  }
+  await sendMessageToAllGameConnections(
+    connectionRecord.game.split("#")[1]!,
+    { dataServer: { imageRecord, connectionRecord }, action: "imageLoading" },
+    ddbClient,
+    apiClient,
+  );
+
   let imageApiResponse;
   try {
     imageApiResponse = await api.images.generate({
@@ -145,6 +171,23 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
       ...message,
       serverStatus: "bad request",
     };
+    imageRecord.loading = false;
+    imageRecord.error = true;
+    await ddbClient.send(
+      new PutItemCommand({
+        TableName: Table.chimpin.tableName,
+        Item: marshall(imageRecord),
+      }),
+    );
+    await sendMessageToAllGameConnections(
+      connectionRecord.game.split("#")[1]!,
+      {
+        dataServer: { imageRecord, connectionRecord },
+        action: "imageError",
+      },
+      ddbClient,
+      apiClient,
+    );
     return {
       statusCode: 400,
       body: JSON.stringify(response),
@@ -157,25 +200,16 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   ) {
     throw new Error("Image api response invalid");
   }
-  // put image record into db
-  const imageRecord: ImageRecord = {
-    game: connectionRecord.game,
-    id: `image#${uuidv4()}`,
-    url: imageApiResponse.data[0]?.url,
-    connectionId: event.requestContext.connectionId,
-    promptImage: message.dataClient.promptImage,
-  };
+
+  // update image and send to client
+  imageRecord.url = imageApiResponse.data[0].url;
+  imageRecord.loading = false;
   await ddbClient.send(
     new PutItemCommand({
       TableName: Table.chimpin.tableName,
       Item: marshall(imageRecord),
     }),
   );
-  if (apiClient == null) {
-    apiClient = new ApiGatewayManagementApiClient({
-      endpoint: `https://${event.requestContext.domainName}/${event.requestContext.stage}`,
-    });
-  }
   await sendMessageToAllGameConnections(
     connectionRecord.game.split("#")[1]!,
     { dataServer: { imageRecord, connectionRecord }, action: "imageGenerated" },

@@ -177,7 +177,11 @@ export function Game() {
           });
           setConnectionRecords(newConnectionRecords);
           setImageRecords(newImageRecords);
-        } else if (message.action === "imageGenerated") {
+        } else if (
+          message.action === "imageLoading" ||
+          message.action === "imageError" ||
+          message.action === "imageGenerated"
+        ) {
           setImageRecords((prev) => {
             return uniqueObjArray(prev, message.dataServer.imageRecord);
           });
@@ -403,7 +407,6 @@ export function Game() {
           myConnectionRecord={myConnectionRecord}
           imageRecords={imageRecords}
           myImageRecord={myImageRecord}
-          imageLoading={imageLoading}
         />
         <div className="grid grid-flow-row">
           <Countdown
@@ -465,7 +468,6 @@ export function Game() {
           myConnectionRecord={myConnectionRecord}
           imageRecords={imageRecords}
           myImageRecord={myImageRecord}
-          imageLoading={imageLoading}
           sendMessage={sendMessage}
           setErrorMessage={setErrorMessage}
         />
@@ -493,7 +495,6 @@ export function Game() {
           myConnectionRecord={myConnectionRecord}
           imageRecords={imageRecords}
           myImageRecord={myImageRecord}
-          imageLoading={imageLoading}
           winningImageRecord={
             !winningImageRecord?.votes ? undefined : winningImageRecord
           }
@@ -560,13 +561,11 @@ function Collage({
   myConnectionRecord,
   imageRecords,
   myImageRecord,
-  imageLoading,
 }: {
   connectionRecords: ConnectionRecord[];
   myConnectionRecord?: ConnectionRecord;
   imageRecords: ImageRecord[];
   myImageRecord: ImageRecord | undefined;
-  imageLoading: ImageLoading | undefined;
 }) {
   return (
     <>
@@ -581,14 +580,23 @@ function Collage({
               (imageRecord) =>
                 imageRecord.connectionId === connectionRecord.id.split("#")[1],
             )[0];
-            return imageRecord ? (
+            return imageRecord?.url ? (
               <Image
-                src={imageRecord?.url}
+                src={imageRecord.url}
                 alt={`${connectionRecord.name}'s image`}
                 key={connectionRecord.id}
                 width={128}
                 height={128}
               />
+            ) : imageRecord?.loading ? (
+              <div
+                key={connectionRecord.id}
+                className="skeleton w-32 h-32"
+              ></div>
+            ) : imageRecord?.error ? (
+              <div key={connectionRecord.id} className="bg-gray-200 w-32 h-32">
+                Try again!
+              </div>
             ) : (
               <span key={connectionRecord.id} className="bg-gray-200 w-32 h-32">
                 {connectionRecord.name}'s image
@@ -596,16 +604,16 @@ function Collage({
             );
           })}
       </div>
-      {myImageRecord ? (
+      {myImageRecord?.url ? (
         <Image
-          src={myImageRecord?.url}
+          src={myImageRecord.url}
           alt="your image"
           width={256}
           height={256}
         />
-      ) : imageLoading?.loading ? (
+      ) : myImageRecord?.loading ? (
         <div className="skeleton w-64 h-64"></div>
-      ) : imageLoading?.error ? (
+      ) : myImageRecord?.error ? (
         <div className="bg-gray-200 w-64 h-64">Try again!</div>
       ) : (
         <span className="bg-gray-200 w-64 h-64">Your image</span>
@@ -619,7 +627,6 @@ function SelectableCollage({
   myConnectionRecord,
   imageRecords,
   myImageRecord,
-  imageLoading,
   sendMessage,
   setErrorMessage,
 }: {
@@ -627,7 +634,6 @@ function SelectableCollage({
   myConnectionRecord?: ConnectionRecord;
   imageRecords: ImageRecord[];
   myImageRecord: ImageRecord | undefined;
-  imageLoading: ImageLoading | undefined;
   sendMessage: (data: AnyClientMessage) => void;
   setErrorMessage: (message: string | undefined) => void;
 }) {
@@ -647,10 +653,10 @@ function SelectableCollage({
             const isSelected =
               myConnectionRecord?.votedImageId ===
               imageRecord?.id.split("#")[1];
-            return imageRecord ? (
+            return imageRecord?.url ? (
               <div className="relative" key={connectionRecord.id}>
                 <Image
-                  src={imageRecord?.url}
+                  src={imageRecord.url}
                   alt={`${connectionRecord.name}'s image`}
                   width={128}
                   height={128}
@@ -685,17 +691,26 @@ function SelectableCollage({
                   </div>
                 )}
               </div>
+            ) : imageRecord?.loading ? (
+              <div
+                key={connectionRecord.id}
+                className="skeleton w-32 h-32"
+              ></div>
+            ) : imageRecord?.error ? (
+              <div key={connectionRecord.id} className="bg-gray-200 w-32 h-32">
+                Try again!
+              </div>
             ) : (
               <span key={connectionRecord.id} className="bg-gray-200 w-32 h-32">
-                {connectionRecord.name}'s image
+                No image generated :-(
               </span>
             );
           })}
       </div>
-      {myImageRecord ? (
+      {myImageRecord?.url ? (
         <div className="relative">
           <Image
-            src={myImageRecord?.url}
+            src={myImageRecord.url}
             alt="your image"
             width={256}
             height={256}
@@ -731,9 +746,9 @@ function SelectableCollage({
             </div>
           )}
         </div>
-      ) : imageLoading?.loading ? (
+      ) : myImageRecord?.loading ? (
         <div className="skeleton w-64 h-64"></div>
-      ) : imageLoading?.error ? (
+      ) : myImageRecord?.error ? (
         <div className="bg-gray-200 w-64 h-64">Try again!</div>
       ) : (
         <span className="bg-gray-200 w-64 h-64">No image generated :-(</span>
@@ -747,7 +762,6 @@ function WinnerCollage({
   myConnectionRecord,
   imageRecords,
   myImageRecord,
-  imageLoading,
   winningImageRecord,
   sendMessage,
   setErrorMessage,
@@ -756,7 +770,6 @@ function WinnerCollage({
   myConnectionRecord?: ConnectionRecord;
   imageRecords: ImageRecord[];
   myImageRecord: ImageRecord | undefined;
-  imageLoading: ImageLoading | undefined;
   winningImageRecord?: ImageRecord;
   sendMessage: (data: AnyClientMessage) => void;
   setErrorMessage: (message: string | undefined) => void;
@@ -775,10 +788,10 @@ function WinnerCollage({
                 imageRecord.connectionId === connectionRecord.id.split("#")[1],
             )[0];
             const isWinning = winningImageRecord?.id === imageRecord?.id;
-            return imageRecord ? (
+            return imageRecord?.url ? (
               <div className="relative" key={connectionRecord.id}>
                 <Image
-                  src={imageRecord?.url}
+                  src={imageRecord.url}
                   alt={`${connectionRecord.name}'s image`}
                   width={128}
                   height={128}
@@ -799,17 +812,26 @@ function WinnerCollage({
                   <StarIcon className="absolute top-2 right-2 h-6 w-6 text-yellow-500" />
                 )}
               </div>
+            ) : imageRecord?.loading ? (
+              <div
+                key={connectionRecord.id}
+                className="skeleton w-32 h-32"
+              ></div>
+            ) : imageRecord?.error ? (
+              <div key={connectionRecord.id} className="bg-gray-200 w-32 h-32">
+                Try again!
+              </div>
             ) : (
               <span key={connectionRecord.id} className="bg-gray-200 w-32 h-32">
-                {connectionRecord.name}'s image
+                No image generated :-(
               </span>
             );
           })}
       </div>
-      {myImageRecord ? (
+      {myImageRecord?.url ? (
         <div className="relative">
           <Image
-            src={myImageRecord?.url}
+            src={myImageRecord.url}
             alt="your image"
             width={256}
             height={256}
@@ -819,9 +841,9 @@ function WinnerCollage({
             <StarIcon className="absolute top-2 right-2 h-6 w-6 text-yellow-500" />
           )}
         </div>
-      ) : imageLoading?.loading ? (
+      ) : myImageRecord?.loading ? (
         <div className="skeleton w-64 h-64"></div>
-      ) : imageLoading?.error ? (
+      ) : myImageRecord?.error ? (
         <div className="bg-gray-200 w-64 h-64">Try again!</div>
       ) : (
         <span className="bg-gray-200 w-64 h-64">No image generated :-(</span>
