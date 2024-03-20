@@ -43,7 +43,7 @@ export default {
             },
             returnResponse: true,
           },
-          hearBeat: {
+          heartBeat: {
             function: {
               handler: "src/server/websocket/heartBeat.main",
               timeout: 30,

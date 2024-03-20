@@ -43,7 +43,7 @@ function uniqueObjArray<T extends Record<string, unknown>>(
   return arrCopy;
 }
 
-interface ImageLoading {
+interface MessageLoading {
   loading: boolean;
   error: boolean;
   messageId: string;
@@ -74,13 +74,13 @@ export function Game() {
   const [name, setName] = React.useState<string>("");
   const [gameCode, setGameCode] = React.useState<string>("");
   const [promptImage, setPromptImage] = React.useState<string>("");
-  const imageLoadingRef = React.useRef<ImageLoading>();
-  const [imageLoading, setImageLoading] = React.useState<ImageLoading>();
+  const imageLoadingRef = React.useRef<MessageLoading>();
+  const [imageLoading, setImageLoading] = React.useState<MessageLoading>();
   const handleImageLoading = React.useCallback(
     (
       newImageLoading:
-        | ImageLoading
-        | ((prevImageLoading: ImageLoading | undefined) => ImageLoading),
+        | MessageLoading
+        | ((prevImageLoading: MessageLoading | undefined) => MessageLoading),
     ) => {
       if (typeof newImageLoading === "function") {
         newImageLoading = newImageLoading(imageLoadingRef.current);
@@ -96,6 +96,23 @@ export function Game() {
           (x) => x.connectionId === myConnectionRecord?.id.split("#")[1],
         )[0]
       : undefined;
+  const gameMetaLoadingRef = React.useRef<MessageLoading>();
+  const [gameMetaLoading, setGameMetaLoading] =
+    React.useState<MessageLoading>();
+  const handleGameMetaLoading = React.useCallback(
+    (
+      newGameMetaLoading:
+        | MessageLoading
+        | ((prevGameMetaLoading: MessageLoading | undefined) => MessageLoading),
+    ) => {
+      if (typeof newGameMetaLoading === "function") {
+        newGameMetaLoading = newGameMetaLoading(gameMetaLoadingRef.current);
+      }
+      setGameMetaLoading(newGameMetaLoading);
+      gameMetaLoadingRef.current = newGameMetaLoading;
+    },
+    [],
+  );
 
   const [currentTime, setCurrentTime] = React.useState<number>();
   React.useEffect(() => {
@@ -167,6 +184,14 @@ export function Game() {
               error: true,
               messageId: prev?.messageId ?? "",
             }));
+          } else if (
+            gameMetaLoadingRef.current?.messageId === message.messageId
+          ) {
+            handleGameMetaLoading((prev) => ({
+              loading: false,
+              error: true,
+              messageId: prev?.messageId ?? "",
+            }));
           }
         } else if ("message" in message) {
           // internal server error message
@@ -215,6 +240,13 @@ export function Game() {
           setMyConnectionRecord(message.dataServer);
         } else if (message.action === "makeGame") {
           setMyConnectionRecord(message.dataServer);
+          if (gameMetaLoadingRef.current?.messageId === message.messageId) {
+            handleGameMetaLoading((prev) => ({
+              loading: false,
+              error: false,
+              messageId: prev?.messageId ?? "",
+            }));
+          }
         } else if (message.action === "makeImage") {
           if (imageLoadingRef.current?.messageId === message.messageId) {
             handleImageLoading((prev) => ({
@@ -301,15 +333,31 @@ export function Game() {
             className="btn btn-primary btn-lg text-white"
             onClick={() => {
               setErrorMessage(undefined);
+              const messageId = uuid();
+              handleGameMetaLoading({
+                loading: true,
+                error: false,
+                messageId,
+              });
               sendMessage({
                 action: "makeGame",
                 dataClient: { name },
-                messageId: uuid(),
+                messageId,
               });
             }}
-            disabled={name.length < nameMinLength}
+            disabled={
+              name.length < nameMinLength ||
+              (gameMetaLoading?.loading ?? false) ||
+              gameMetaRecord != null
+            }
           >
-            Make Game
+            {(gameMetaLoading?.loading ?? false) && !gameMetaLoading?.error ? (
+              <span className="loading loading-spinner"></span>
+            ) : gameMetaRecord != null ? (
+              <CheckIcon className="h-6 w-6" />
+            ) : (
+              "Make Game"
+            )}
           </button>
         </>
       );
