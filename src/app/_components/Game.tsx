@@ -88,6 +88,9 @@ export function Game() {
   const gameJoinLoadingRef = React.useRef<MessageLoading>();
   const [gameJoinLoading, setGameJoinLoading] =
     React.useState<MessageLoading>();
+  const progressGameLoadingRef = React.useRef<MessageLoading>();
+  const [progressGameLoading, setProgressGameLoading] =
+    React.useState<MessageLoading>();
 
   const handleMessageLoading = React.useCallback(
     (
@@ -238,9 +241,20 @@ export function Game() {
           if (message.dataClient?.status === "lobby") {
             setPromptImage("");
           }
+          if (progressGameLoadingRef.current?.messageId === message.messageId) {
+            handleMessageLoading(
+              (prev) => ({
+                loading: false,
+                error: false,
+                messageId: prev?.messageId ?? "",
+              }),
+              setProgressGameLoading,
+              progressGameLoadingRef,
+            );
+          }
         } else if (message.action === "joinGame") {
           setMyConnectionRecord(message.dataServer);
-          if (gameMetaLoadingRef.current?.messageId === message.messageId) {
+          if (gameJoinLoadingRef.current?.messageId === message.messageId) {
             handleMessageLoading(
               (prev) => ({
                 loading: false,
@@ -427,7 +441,7 @@ export function Game() {
               sendMessage({
                 action: "joinGame",
                 dataClient: { name, gameCode },
-                messageId: messageId,
+                messageId,
               });
             }}
             disabled={
@@ -462,16 +476,32 @@ export function Game() {
             className="btn btn-primary btn-lg text-white"
             onClick={() => {
               setErrorMessage(undefined);
+              const messageId = uuid();
+              handleMessageLoading(
+                {
+                  loading: true,
+                  error: false,
+                  messageId,
+                },
+                setProgressGameLoading,
+                progressGameLoadingRef,
+              );
               sendMessage({
                 action: "progressGame",
                 dataClient: { status: "playing" },
-                messageId: uuid(),
+                messageId,
               });
             }}
+            disabled={progressGameLoading?.loading ?? false}
           >
-            {connectionRecords.length > 1
-              ? "Proceed"
-              : "Proceed without friends"}
+            {(progressGameLoading?.loading ?? false) &&
+            !progressGameLoading?.error ? (
+              <span className="loading loading-spinner"></span>
+            ) : connectionRecords.length > 1 ? (
+              "Proceed"
+            ) : (
+              "Proceed without friends"
+            )}
           </button>
           <div className="flex gap-3">
             {connectionRecords.map((connectionRecord) => (
@@ -615,14 +645,30 @@ export function Game() {
             className="btn btn-primary btn-lg text-white"
             onClick={() => {
               setErrorMessage(undefined);
+              const messageId = uuid();
+              handleMessageLoading(
+                {
+                  loading: true,
+                  error: false,
+                  messageId,
+                },
+                setProgressGameLoading,
+                progressGameLoadingRef,
+              );
               sendMessage({
                 action: "progressGame",
                 dataClient: { status: "lobby" },
-                messageId: uuid(),
+                messageId,
               });
             }}
+            disabled={progressGameLoading?.loading ?? false}
           >
-            Back to lobby
+            {(progressGameLoading?.loading ?? false) &&
+            !progressGameLoading?.error ? (
+              <span className="loading loading-spinner"></span>
+            ) : (
+              "Back to lobby"
+            )}
           </button>
         </div>
       </div>
