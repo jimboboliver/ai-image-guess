@@ -37,13 +37,6 @@ interface MessageLoading {
 }
 
 export function Game() {
-  const isMounted = React.useRef(true);
-  React.useEffect(() => {
-    return () => {
-      isMounted.current = false;
-    };
-  }, []);
-
   const [ownedGame, setOwnedGame] = React.useState<boolean>();
   const [gameMetaRecord, setGameMetaRecord] = React.useState<GameMetaRecord>();
   const [connectionRecords, setConnectionRecords] = React.useState<
@@ -131,13 +124,11 @@ export function Game() {
       wsNew.onclose = () => {
         console.debug("ws close");
         clearInterval(intervalHeartBeat);
-        if (isMounted.current) {
-          setTimeout(() => {
-            const newWs = openWebSocket();
-            setWs(newWs);
-            wsRef.current = wsNew;
-          }, 1000);
-        }
+        setTimeout(() => {
+          const newWs = openWebSocket();
+          setWs(newWs);
+          wsRef.current = wsNew;
+        }, 1000);
       };
       wsNew.onerror = (e) => {
         console.debug("ws error", e);
