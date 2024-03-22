@@ -25,23 +25,10 @@ import Image from "next/image";
 import React from "react";
 import { v4 as uuid } from "uuid";
 
+import { uniqueObjArray } from "../utils/uniqueObjArray";
 import { Avatar } from "./Avatar";
 import { BackButton } from "./BackButton";
 import { Countdown } from "./Countdown";
-
-function uniqueObjArray<T extends Record<string, unknown>>(
-  arr: T[],
-  newElement: T,
-) {
-  const arrCopy = arr.slice();
-  const index = arrCopy.findIndex((x) => x.id === newElement.id);
-  if (index === -1) {
-    arrCopy.push(newElement);
-  } else {
-    arrCopy[index] = newElement;
-  }
-  return arrCopy;
-}
 
 interface MessageLoading {
   loading: boolean;
