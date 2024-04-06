@@ -8,10 +8,10 @@ import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import { Table } from "sst/node/table";
 
 import type { ConnectionRecord } from "../db/dynamodb/connection";
-import type { NewConnectionMessage } from "../websocket/messageschema/server2client/newConnection";
-import { deleteConnection } from "./deleteConnection";
+import type { NewPlayerMessage } from "../websocket/messageschema/server2client/newPlayer";
+import { deletePlayer } from "./deletePlayer";
 
-export async function notifyNewConnection(
+export async function notifyNewPlayer(
   connectionRecord: ConnectionRecord,
   ddbClient: DynamoDB,
   apiClient: ApiGatewayManagementApiClient,
@@ -21,7 +21,7 @@ export async function notifyNewConnection(
       TableName: Table.chimpin.tableName,
       KeyConditionExpression: "game = :game AND begins_with(id, :connection)",
       ExpressionAttributeValues: marshall({
-        ":game": connectionRecord.game,
+        ":game": connectionRecord.pk,
         ":connection": "connection",
       }),
     }),
@@ -29,11 +29,11 @@ export async function notifyNewConnection(
 
   for (const item of existingConnectionResponse.Items ?? []) {
     const existingConnectionRecord = unmarshall(item) as ConnectionRecord;
-    const connectionId = existingConnectionRecord.id.split("#")[1];
+    const connectionId = existingConnectionRecord.sk.split("#")[1];
     try {
       console.debug("Sending message to a connection", connectionId);
-      const fullGameMessage: NewConnectionMessage = {
-        action: "newConnection",
+      const fullGameMessage: NewPlayerMessage = {
+        action: "newPlayer",
         dataServer: connectionRecord,
       };
       await apiClient.send(
@@ -46,7 +46,7 @@ export async function notifyNewConnection(
       if (error instanceof GoneException) {
         console.debug("Connection was closed");
         if (connectionId != null) {
-          await deleteConnection(connectionId);
+          await deletePlayer(connectionId);
         }
         return;
       }

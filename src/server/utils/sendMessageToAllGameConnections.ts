@@ -12,7 +12,7 @@ import { marshall } from "@aws-sdk/util-dynamodb";
 import { Table } from "sst/node/table";
 
 import type { AnyServerMessage } from "../websocket/messageschema/server2client/any";
-import { deleteConnection } from "./deleteConnection";
+import { deletePlayer } from "./deletePlayer";
 
 export async function sendMessageToAllGameConnections(
   gameId: string,
@@ -47,7 +47,7 @@ export async function sendMessageToAllGameConnections(
       if (error instanceof GoneException) {
         console.debug("Connection was closed");
         if (connectionId != null) {
-          await deleteConnection(connectionId);
+          await deletePlayer(connectionId);
         }
         return;
       }

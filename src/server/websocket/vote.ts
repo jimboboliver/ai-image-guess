@@ -57,9 +57,9 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
     new QueryCommand({
       TableName: Table.chimpin.tableName,
       IndexName: "idIndex",
-      KeyConditionExpression: "id = :id",
+      KeyConditionExpression: "pk = :pk",
       ExpressionAttributeValues: marshall({
-        ":id": `connection#${event.requestContext.connectionId}`,
+        ":pk": `connection#${event.requestContext.connectionId}`,
       }),
     }),
   );
@@ -90,7 +90,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
       TableName: Table.chimpin.tableName,
       KeyConditionExpression: "game = :game and id = :id",
       ExpressionAttributeValues: marshall({
-        ":game": connectionRecord.game,
+        ":game": connectionRecord.pk,
         ":id": `image#${message.dataClient.imageId}`,
       }),
     }),
@@ -107,8 +107,8 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
     new UpdateItemCommand({
       TableName: Table.chimpin.tableName,
       Key: marshall({
-        game: connectionRecord.game,
-        id: connectionRecord.id,
+        game: connectionRecord.pk,
+        id: connectionRecord.sk,
       }),
       UpdateExpression: "SET #votedImageId = :votedImageId",
       ExpressionAttributeNames: {
@@ -126,7 +126,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
     new UpdateItemCommand({
       TableName: Table.chimpin.tableName,
       Key: marshall({
-        game: connectionRecord.game,
+        game: connectionRecord.pk,
         id: `image#${message.dataClient.imageId}`,
       }),
       UpdateExpression: "SET #votes = :votes",
@@ -141,7 +141,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
 
   // send vote to all connections
   await sendMessageToAllGameConnections(
-    connectionRecord.game.split("#")[1]!,
+    connectionRecord.pk.split("#")[1]!,
     { dataServer: { imageRecord, connectionRecord }, action: "voted" },
     ddbClient,
     apiClient,

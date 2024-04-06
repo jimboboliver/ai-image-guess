@@ -9,7 +9,7 @@ import { Table } from "sst/node/table";
 
 import type { ConnectionRecord } from "../db/dynamodb/connection";
 
-export async function deleteConnection(connectionId: string) {
+export async function deletePlayer(connectionId: string) {
   const ddbClient = new DynamoDB();
   const connectionDdbResponse = await ddbClient.send(
     new QueryCommand({
@@ -21,7 +21,7 @@ export async function deleteConnection(connectionId: string) {
       }),
     }),
   );
-  const deleteConnection = async function (
+  const deletePlayer = async function (
     connectionRecord: Record<string, AttributeValue>,
   ) {
     await ddbClient.send(
@@ -35,7 +35,7 @@ export async function deleteConnection(connectionId: string) {
     );
   };
 
-  await Promise.all(connectionDdbResponse.Items?.map(deleteConnection) ?? []);
+  await Promise.all(connectionDdbResponse.Items?.map(deletePlayer) ?? []);
 
   return (
     connectionDdbResponse.Items?.map(

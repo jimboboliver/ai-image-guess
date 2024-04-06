@@ -3,11 +3,6 @@
 import { CheckIcon, StarIcon } from "@heroicons/react/24/solid";
 import { env } from "~/env";
 import {
-  nameMaxLength,
-  nameMinLength,
-  type ConnectionRecord,
-} from "~/server/db/dynamodb/connection";
-import {
   gameCodeLength,
   type GameMetaRecord,
 } from "~/server/db/dynamodb/gameMeta";
@@ -16,6 +11,11 @@ import {
   promptImageMinLength,
   type ImageRecord,
 } from "~/server/db/dynamodb/image";
+import {
+  nameMaxLength,
+  nameMinLength,
+  type PlayerRecord,
+} from "~/server/db/dynamodb/player";
 import type { AnyClientMessage } from "~/server/websocket/messageschema/client2server/any";
 import {
   anyServerMessageSchema,
@@ -39,11 +39,8 @@ interface MessageLoading {
 export function Game() {
   const [ownedGame, setOwnedGame] = React.useState<boolean>();
   const [gameMetaRecord, setGameMetaRecord] = React.useState<GameMetaRecord>();
-  const [connectionRecords, setConnectionRecords] = React.useState<
-    ConnectionRecord[]
-  >([]);
-  const [myConnectionRecord, setMyConnectionRecord] =
-    React.useState<ConnectionRecord>();
+  const [playerRecords, setPlayerRecords] = React.useState<PlayerRecord[]>([]);
+  const [myPlayerRecord, setMyPlayerRecord] = React.useState<PlayerRecord>();
   const [imageRecords, setImageRecords] = React.useState<ImageRecord[]>([]);
   // find imageRecord with maximum votes in imageRecords
   const winningImageRecord = imageRecords.reduce(
@@ -57,9 +54,9 @@ export function Game() {
   const imageLoadingRef = React.useRef<MessageLoading>();
   const [imageLoading, setImageLoading] = React.useState<MessageLoading>();
   const myImageRecord =
-    myConnectionRecord != null
+    myPlayerRecord != null
       ? imageRecords.filter(
-          (x) => x.connectionId === myConnectionRecord?.id.split("#")[1],
+          (x) => x.connectionId === myPlayerRecord?.sk.split("#")[1],
         )[0]
       : undefined;
   const gameMetaLoadingRef = React.useRef<MessageLoading>();
@@ -186,17 +183,17 @@ export function Game() {
           setErrorMessage(message.message);
         } else if (message.action === "fullGame") {
           const newImageRecords: ImageRecord[] = [];
-          const newConnectionRecords: ConnectionRecord[] = [];
+          const newPlayerRecords: PlayerRecord[] = [];
           message.dataServer.forEach((row) => {
             if ("url" in row) {
               newImageRecords.push(row);
             } else if ("name" in row) {
-              newConnectionRecords.push(row);
+              newPlayerRecords.push(row);
             } else if ("status" in row) {
               setGameMetaRecord(row);
             }
           });
-          setConnectionRecords(newConnectionRecords);
+          setPlayerRecords(newPlayerRecords);
           setImageRecords(newImageRecords);
         } else if (
           message.action === "imageLoading" ||
@@ -206,16 +203,16 @@ export function Game() {
           setImageRecords((prev) => {
             return uniqueObjArray(prev, message.dataServer.imageRecord);
           });
-          setConnectionRecords((prev) => {
+          setPlayerRecords((prev) => {
             return uniqueObjArray(prev, message.dataServer.connectionRecord);
           });
-        } else if (message.action === "newConnection") {
-          setConnectionRecords((prev) => {
+        } else if (message.action === "newPlayer") {
+          setPlayerRecords((prev) => {
             return uniqueObjArray(prev, message.dataServer);
           });
-        } else if (message.action === "deleteConnection") {
-          setConnectionRecords((prev) =>
-            prev.filter((x) => x.id !== message.dataServer.id),
+        } else if (message.action === "deletePlayer") {
+          setPlayerRecords((prev) =>
+            prev.filter((x) => x.sk !== message.dataServer.sk),
           );
         } else if (message.action === "progressedGame") {
           setGameMetaRecord(message.dataServer);
@@ -235,7 +232,7 @@ export function Game() {
             );
           }
         } else if (message.action === "joinGame") {
-          setMyConnectionRecord(message.dataServer);
+          setMyPlayerRecord(message.dataServer);
           if (gameJoinLoadingRef.current?.messageId === message.messageId) {
             handleMessageLoading(
               (prev) => ({
@@ -248,7 +245,7 @@ export function Game() {
             );
           }
         } else if (message.action === "makeGame") {
-          setMyConnectionRecord(message.dataServer);
+          setMyPlayerRecord(message.dataServer);
           if (gameMetaLoadingRef.current?.messageId === message.messageId) {
             handleMessageLoading(
               (prev) => ({
@@ -273,7 +270,7 @@ export function Game() {
             );
           }
         } else if (message.action === "voted") {
-          setMyConnectionRecord(message.dataServer.connectionRecord);
+          setMyPlayerRecord(message.dataServer.connectionRecord);
           setImageRecords((prev) => {
             return uniqueObjArray(prev, message.dataServer.imageRecord);
           });
@@ -479,15 +476,15 @@ export function Game() {
             {(progressGameLoading?.loading ?? false) &&
             !progressGameLoading?.error ? (
               <span className="loading loading-spinner"></span>
-            ) : connectionRecords.length > 1 ? (
+            ) : playerRecords.length > 1 ? (
               "Proceed"
             ) : (
               "Proceed without friends"
             )}
           </button>
           <div className="flex gap-3">
-            {connectionRecords.map((connectionRecord) => (
-              <Avatar key={connectionRecord.id} name={connectionRecord.name} />
+            {playerRecords.map((connectionRecord) => (
+              <Avatar key={connectionRecord.sk} name={connectionRecord.name} />
             ))}
           </div>
         </>
@@ -502,8 +499,8 @@ export function Game() {
             Wait for the game owner to proceed...
           </h1>
           <div className="flex gap-3">
-            {connectionRecords.map((connectionRecord) => (
-              <Avatar key={connectionRecord.id} name={connectionRecord.name} />
+            {playerRecords.map((connectionRecord) => (
+              <Avatar key={connectionRecord.sk} name={connectionRecord.name} />
             ))}
           </div>
         </>
@@ -516,8 +513,8 @@ export function Game() {
     content = (
       <div className="grid grid-rows-[1fr_1fr_1fr]">
         <Collage
-          connectionRecords={connectionRecords}
-          myConnectionRecord={myConnectionRecord}
+          connectionRecords={playerRecords}
+          myConnectionRecord={myPlayerRecord}
           imageRecords={imageRecords}
           myImageRecord={myImageRecord}
         />
@@ -532,7 +529,7 @@ export function Game() {
             onChange={(e) => {
               setPromptImage(e.target.value.slice(0, promptImageMaxLength));
             }}
-            disabled={imageLoading?.loading}
+            disabled={imageLoading?.loading ?? myImageRecord != null}
           ></textarea>
           <button
             className="btn btn-primary btn-lg text-white"
@@ -571,8 +568,8 @@ export function Game() {
         </div>
       </div>
     );
-    connectionRecords.map((connectionRecord) => (
-      <Avatar key={connectionRecord.id} name={connectionRecord.name} />
+    playerRecords.map((connectionRecord) => (
+      <Avatar key={connectionRecord.sk} name={connectionRecord.name} />
     ));
   } else if (
     gameMetaRecord.status === "playing" &&
@@ -581,8 +578,8 @@ export function Game() {
     content = (
       <div className="grid grid-rows-[1fr_1fr_1fr]">
         <SelectableCollage
-          connectionRecords={connectionRecords}
-          myConnectionRecord={myConnectionRecord}
+          connectionRecords={playerRecords}
+          myConnectionRecord={myPlayerRecord}
           imageRecords={imageRecords}
           myImageRecord={myImageRecord}
           sendMessage={sendMessage}
@@ -597,8 +594,8 @@ export function Game() {
         </div>
       </div>
     );
-    connectionRecords.map((connectionRecord) => (
-      <Avatar key={connectionRecord.id} name={connectionRecord.name} />
+    playerRecords.map((connectionRecord) => (
+      <Avatar key={connectionRecord.sk} name={connectionRecord.name} />
     ));
   } else if (
     gameMetaRecord.status === "playing" &&
@@ -607,8 +604,8 @@ export function Game() {
     content = (
       <div className="grid grid-rows-[1fr_1fr_1fr]">
         <WinnerCollage
-          connectionRecords={connectionRecords}
-          myConnectionRecord={myConnectionRecord}
+          connectionRecords={playerRecords}
+          myConnectionRecord={myPlayerRecord}
           imageRecords={imageRecords}
           myImageRecord={myImageRecord}
           winningImageRecord={
@@ -655,8 +652,8 @@ export function Game() {
         </div>
       </div>
     );
-    connectionRecords.map((connectionRecord) => (
-      <Avatar key={connectionRecord.id} name={connectionRecord.name} />
+    playerRecords.map((connectionRecord) => (
+      <Avatar key={connectionRecord.sk} name={connectionRecord.name} />
     ));
   }
 
@@ -784,7 +781,7 @@ function SelectableCollage({
             )[0];
             const isSelected =
               myConnectionRecord?.votedImageId ===
-              imageRecord?.id.split("#")[1];
+              imageRecord?.sk.split("#")[1];
             return imageRecord?.url ? (
               <div className="relative" key={connectionRecord.id}>
                 <Image
@@ -794,7 +791,7 @@ function SelectableCollage({
                   height={128}
                   className={`border-2 cursor-pointer ${isSelected ? "border-green-500" : "border-transparent"}`}
                   onClick={() => {
-                    const imageId = imageRecord?.id.split("#")[1];
+                    const imageId = imageRecord?.sk.split("#")[1];
                     if (imageId != null) {
                       setErrorMessage(undefined);
                       sendMessage({
@@ -847,7 +844,7 @@ function SelectableCollage({
             width={256}
             height={256}
             onClick={() => {
-              const imageId = myImageRecord?.id.split("#")[1];
+              const imageId = myImageRecord?.sk.split("#")[1];
               if (imageId != null) {
                 setErrorMessage(undefined);
                 sendMessage({
@@ -857,10 +854,10 @@ function SelectableCollage({
                 });
               }
             }}
-            className={`border-2 cursor-pointer ${myConnectionRecord?.votedImageId === myImageRecord.id.split("#")[1] ? "border-green-500" : "border-transparent"}`}
+            className={`border-2 cursor-pointer ${myConnectionRecord?.votedImageId === myImageRecord.sk.split("#")[1] ? "border-green-500" : "border-transparent"}`}
           />
           {myConnectionRecord?.votedImageId ===
-            myImageRecord.id.split("#")[1] && (
+            myImageRecord.sk.split("#")[1] && (
             <div className="absolute top-2 right-2 w-6 h-6 bg-green-500 flex justify-center items-center">
               {/* SVG for the tick mark or use an icon library like FontAwesome */}
               <svg
@@ -919,7 +916,7 @@ function WinnerCollage({
               (imageRecord) =>
                 imageRecord.connectionId === connectionRecord.id.split("#")[1],
             )[0];
-            const isWinning = winningImageRecord?.id === imageRecord?.id;
+            const isWinning = winningImageRecord?.sk === imageRecord?.sk;
             return imageRecord?.url ? (
               <div className="relative" key={connectionRecord.id}>
                 <Image
@@ -929,7 +926,7 @@ function WinnerCollage({
                   height={128}
                   className={`border-2 cursor-pointer ${isWinning ? "border-yellow-500" : "border-transparent"}`}
                   onClick={() => {
-                    const imageId = imageRecord?.id.split("#")[1];
+                    const imageId = imageRecord?.sk.split("#")[1];
                     if (imageId != null) {
                       setErrorMessage(undefined);
                       sendMessage({
@@ -967,9 +964,9 @@ function WinnerCollage({
             alt="your image"
             width={256}
             height={256}
-            className={`border-2 ${winningImageRecord?.id === myImageRecord.id ? "border-yellow-500" : "border-transparent"}`}
+            className={`border-2 ${winningImageRecord?.sk === myImageRecord.sk ? "border-yellow-500" : "border-transparent"}`}
           />
-          {winningImageRecord?.id === myImageRecord.id && (
+          {winningImageRecord?.sk === myImageRecord.sk && (
             <StarIcon className="absolute top-2 right-2 h-6 w-6 text-yellow-500" />
           )}
         </div>

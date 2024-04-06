@@ -54,8 +54,8 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   }
   const gameCode = generateRandomCode();
   const gameMetaRecord: GameMetaRecord = {
-    game: `game#${gameCode}`,
-    id: "meta",
+    pk: `game#${gameCode}`,
+    sk: "meta",
     status: "lobby",
     gameCode: gameCode,
     ownerConnectionId: event.requestContext.connectionId,

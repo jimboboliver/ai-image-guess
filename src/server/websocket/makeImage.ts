@@ -133,8 +133,8 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
 
   // put image record into db while it's loading
   const imageRecord: ImageRecord = {
-    game: connectionRecord.game,
-    id: `image#${uuidv4()}`,
+    pk: connectionRecord.pk,
+    sk: `image#${uuidv4()}`,
     connectionId: event.requestContext.connectionId,
     promptImage: message.dataClient.promptImage,
     loading: true,
@@ -151,7 +151,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
     });
   }
   await sendMessageToAllGameConnections(
-    connectionRecord.game.split("#")[1]!,
+    connectionRecord.pk.split("#")[1]!,
     { dataServer: { imageRecord, connectionRecord }, action: "imageLoading" },
     ddbClient,
     apiClient,
@@ -180,7 +180,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
       }),
     );
     await sendMessageToAllGameConnections(
-      connectionRecord.game.split("#")[1]!,
+      connectionRecord.pk.split("#")[1]!,
       {
         dataServer: { imageRecord, connectionRecord },
         action: "imageError",
@@ -211,7 +211,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
     }),
   );
   await sendMessageToAllGameConnections(
-    connectionRecord.game.split("#")[1]!,
+    connectionRecord.pk.split("#")[1]!,
     { dataServer: { imageRecord, connectionRecord }, action: "imageGenerated" },
     ddbClient,
     apiClient,

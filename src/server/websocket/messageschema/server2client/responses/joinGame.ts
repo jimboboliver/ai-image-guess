@@ -1,4 +1,4 @@
-import { connectionRecordSchema } from "~/server/db/dynamodb/connection";
+import { playerRecordSchema } from "~/server/db/dynamodb/player";
 import type { z } from "zod";
 
 import { joinGameMessageSchema } from "../../client2server/joinGame";
@@ -7,7 +7,7 @@ import { directResponseSchema } from "./directResponseSchema";
 export const joinGameResponseSchema = joinGameMessageSchema
   .extend({
     dataClient: joinGameMessageSchema.shape.dataClient.optional(),
-    dataServer: connectionRecordSchema.optional(),
+    dataServer: playerRecordSchema.optional(),
   })
   .extend(directResponseSchema.shape)
   .refine((data) => {

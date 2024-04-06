@@ -1,12 +1,12 @@
 import { z } from "zod";
 
-import { deleteConnectionMessageSchema } from "./deleteConnection";
+import { deletePlayerMessageSchema } from "./deletePlayer";
 import { fullGameMessageSchema } from "./fullGame";
 import { imageErrorMessageSchema } from "./imageError";
 import { imageGeneratedMessageSchema } from "./imageGenerated";
 import { imageLoadingMessageSchema } from "./imageLoading";
 import { internalServerErrorMessageSchema } from "./internalServerError";
-import { newConnectionMessageSchema } from "./newConnection";
+import { newPlayerMessageSchema } from "./newPlayer";
 import { progressedGameMessageSchema } from "./progressedGame";
 import { joinGameResponseSchema } from "./responses/joinGame";
 import { makeGameResponseSchema } from "./responses/makeGame";
@@ -23,8 +23,8 @@ export const anyServerMessageSchema = z.union([
   imageGeneratedMessageSchema,
   progressedGameMessageSchema,
   votedMessageSchema,
-  newConnectionMessageSchema,
-  deleteConnectionMessageSchema,
+  newPlayerMessageSchema,
+  deletePlayerMessageSchema,
   // client2server message response
   internalServerErrorMessageSchema,
   joinGameResponseSchema,

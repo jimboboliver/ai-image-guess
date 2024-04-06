@@ -11,7 +11,7 @@ import type { ConnectionRecord } from "../db/dynamodb/connection";
 import type { GameMetaRecord } from "../db/dynamodb/gameMeta";
 import type { ImageRecord } from "../db/dynamodb/image";
 import type { FullGameMessage } from "../websocket/messageschema/server2client/fullGame";
-import { deleteConnection } from "./deleteConnection";
+import { deletePlayer } from "./deletePlayer";
 
 export async function sendFullGame(
   connectionId: string,
@@ -49,7 +49,7 @@ export async function sendFullGame(
     if (error instanceof GoneException) {
       console.debug("Connection was closed");
       if (connectionId != null) {
-        await deleteConnection(connectionId);
+        await deletePlayer(connectionId);
       }
       return;
     }
