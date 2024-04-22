@@ -10,8 +10,9 @@ import { Table } from "sst/node/table";
 import type { ConnectionRecord } from "../db/dynamodb/connection";
 import type { GameMetaRecord } from "../db/dynamodb/gameMeta";
 import type { ImageRecord } from "../db/dynamodb/image";
+import type { PlayerPublicRecord } from "../db/dynamodb/player";
 import type { FullGameMessage } from "../websocket/messageschema/server2client/fullGame";
-import { deletePlayer } from "./deletePlayer";
+import { deleteConnection } from "./deleteConnection";
 
 export async function sendFullGame(
   connectionId: string,
@@ -21,7 +22,7 @@ export async function sendFullGame(
 ) {
   const gameDdbResponse = await ddbClient.send(
     new QueryCommand({
-      TableName: Table.chimpin.tableName,
+      TableName: Table.chimpin2.tableName,
       KeyConditionExpression: "game = :game",
       ExpressionAttributeValues: marshall({
         ":game": `game#${gameId}`,
@@ -31,7 +32,7 @@ export async function sendFullGame(
 
   const gameRecords = gameDdbResponse.Items?.map((record) =>
     unmarshall(record),
-  ) as (ConnectionRecord | GameMetaRecord | ImageRecord)[];
+  ) as (ConnectionRecord | GameMetaRecord | ImageRecord | PlayerPublicRecord)[];
 
   try {
     console.debug("Sending message to a connection", connectionId);
@@ -49,10 +50,10 @@ export async function sendFullGame(
     if (error instanceof GoneException) {
       console.debug("Connection was closed");
       if (connectionId != null) {
-        await deletePlayer(connectionId);
+        await deleteConnection(connectionId);
       }
       return;
     }
-    throw error;
+    throw new Error();
   }
 }

@@ -7,6 +7,8 @@ export const makeImageMessageSchema = baseMessageSchema.extend({
   action: z.literal("makeImage"),
   dataClient: z.object({
     promptImage: imageRecordSchema.shape.promptImage,
+    playerId: z.string(),
+    secretId: z.string(),
   }),
 });
 

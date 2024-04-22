@@ -9,6 +9,8 @@ export const joinGameMessageSchema = baseMessageSchema.extend({
   dataClient: z.object({
     gameCode: gameMetaRecordSchema.shape.gameCode,
     name: playerRecordSchema.shape.name,
+    playerId: z.string(),
+    secretId: playerRecordSchema.shape.secretId,
   }),
 });
 

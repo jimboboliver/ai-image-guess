@@ -2,6 +2,7 @@
 
 import { CheckIcon, StarIcon } from "@heroicons/react/24/solid";
 import { env } from "~/env";
+import type { ConnectionRecord } from "~/server/db/dynamodb/connection";
 import {
   gameCodeLength,
   type GameMetaRecord,
@@ -14,7 +15,7 @@ import {
 import {
   nameMaxLength,
   nameMinLength,
-  type PlayerRecord,
+  type PlayerPublicRecord,
 } from "~/server/db/dynamodb/player";
 import type { AnyClientMessage } from "~/server/websocket/messageschema/client2server/any";
 import {
@@ -29,6 +30,7 @@ import { uniqueObjArray } from "../utils/uniqueObjArray";
 import { Avatar } from "./Avatar";
 import { BackButton } from "./BackButton";
 import { Countdown } from "./Countdown";
+import { usePlayerId } from "./usePlayerId";
 
 interface MessageLoading {
   loading: boolean;
@@ -39,8 +41,14 @@ interface MessageLoading {
 export function Game() {
   const [ownedGame, setOwnedGame] = React.useState<boolean>();
   const [gameMetaRecord, setGameMetaRecord] = React.useState<GameMetaRecord>();
-  const [playerRecords, setPlayerRecords] = React.useState<PlayerRecord[]>([]);
-  const [myPlayerRecord, setMyPlayerRecord] = React.useState<PlayerRecord>();
+  const [, setConnectionRecords] = React.useState<ConnectionRecord[]>([]);
+  const [playerPublicRecords, setPlayerPublicRecords] = React.useState<
+    PlayerPublicRecord[]
+  >([]);
+  const [myPlayerPublicRecord, setMyPlayerPublicRecord] =
+    React.useState<PlayerPublicRecord>();
+  console.log("myPlayerPublicRecord", myPlayerPublicRecord);
+  const [, setMyConnectionRecord] = React.useState<ConnectionRecord>();
   const [imageRecords, setImageRecords] = React.useState<ImageRecord[]>([]);
   // find imageRecord with maximum votes in imageRecords
   const winningImageRecord = imageRecords.reduce(
@@ -54,9 +62,9 @@ export function Game() {
   const imageLoadingRef = React.useRef<MessageLoading>();
   const [imageLoading, setImageLoading] = React.useState<MessageLoading>();
   const myImageRecord =
-    myPlayerRecord != null
+    myPlayerPublicRecord != null
       ? imageRecords.filter(
-          (x) => x.connectionId === myPlayerRecord?.sk.split("#")[1],
+          (x) => x.playerId === myPlayerPublicRecord?.id.split("#")[1],
         )[0]
       : undefined;
   const gameMetaLoadingRef = React.useRef<MessageLoading>();
@@ -68,6 +76,8 @@ export function Game() {
   const progressGameLoadingRef = React.useRef<MessageLoading>();
   const [progressGameLoading, setProgressGameLoading] =
     React.useState<MessageLoading>();
+
+  const { playerId, secretId } = usePlayerId();
 
   const handleMessageLoading = React.useCallback(
     (
@@ -183,7 +193,7 @@ export function Game() {
           setErrorMessage(message.message);
         } else if (message.action === "fullGame") {
           const newImageRecords: ImageRecord[] = [];
-          const newPlayerRecords: PlayerRecord[] = [];
+          const newPlayerRecords: PlayerPublicRecord[] = [];
           message.dataServer.forEach((row) => {
             if ("url" in row) {
               newImageRecords.push(row);
@@ -193,7 +203,7 @@ export function Game() {
               setGameMetaRecord(row);
             }
           });
-          setPlayerRecords(newPlayerRecords);
+          setPlayerPublicRecords(newPlayerRecords);
           setImageRecords(newImageRecords);
         } else if (
           message.action === "imageLoading" ||
@@ -203,16 +213,19 @@ export function Game() {
           setImageRecords((prev) => {
             return uniqueObjArray(prev, message.dataServer.imageRecord);
           });
-          setPlayerRecords((prev) => {
-            return uniqueObjArray(prev, message.dataServer.connectionRecord);
+          setPlayerPublicRecords((prev) => {
+            return uniqueObjArray(prev, message.dataServer.playerPublicRecord);
           });
         } else if (message.action === "newPlayer") {
-          setPlayerRecords((prev) => {
-            return uniqueObjArray(prev, message.dataServer);
+          setPlayerPublicRecords((prev) => {
+            return uniqueObjArray(prev, message.dataServer.playerPublicRecord);
           });
-        } else if (message.action === "deletePlayer") {
-          setPlayerRecords((prev) =>
-            prev.filter((x) => x.sk !== message.dataServer.sk),
+          setConnectionRecords((prev) => {
+            return uniqueObjArray(prev, message.dataServer.connectionRecord);
+          });
+        } else if (message.action === "deleteConnection") {
+          setConnectionRecords((prev) =>
+            prev.filter((x) => x.id !== message.dataServer.id),
           );
         } else if (message.action === "progressedGame") {
           setGameMetaRecord(message.dataServer);
@@ -232,7 +245,8 @@ export function Game() {
             );
           }
         } else if (message.action === "joinGame") {
-          setMyPlayerRecord(message.dataServer);
+          setMyPlayerPublicRecord(message.dataServer?.playerPublicRecord);
+          setMyConnectionRecord(message.dataServer?.connectionRecord);
           if (gameJoinLoadingRef.current?.messageId === message.messageId) {
             handleMessageLoading(
               (prev) => ({
@@ -245,7 +259,8 @@ export function Game() {
             );
           }
         } else if (message.action === "makeGame") {
-          setMyPlayerRecord(message.dataServer);
+          setMyPlayerPublicRecord(message.dataServer?.playerPublicRecord);
+          setMyConnectionRecord(message.dataServer?.connectionRecord);
           if (gameMetaLoadingRef.current?.messageId === message.messageId) {
             handleMessageLoading(
               (prev) => ({
@@ -270,9 +285,19 @@ export function Game() {
             );
           }
         } else if (message.action === "voted") {
-          setMyPlayerRecord(message.dataServer.connectionRecord);
+          setPlayerPublicRecords((prev) => {
+            return uniqueObjArray(prev, message.dataServer.playerPublicRecord);
+          });
           setImageRecords((prev) => {
             return uniqueObjArray(prev, message.dataServer.imageRecord);
+          });
+        } else if (message.action === "vote") {
+          setMyPlayerPublicRecord(message.dataServer?.playerPublicRecord);
+          setImageRecords((prev) => {
+            if (message.dataServer?.imageRecord) {
+              return uniqueObjArray(prev, message.dataServer?.imageRecord);
+            }
+            return prev;
           });
         }
       };
@@ -346,6 +371,10 @@ export function Game() {
           <button
             className="btn btn-primary btn-lg text-white"
             onClick={() => {
+              if (playerId == null || secretId == null) {
+                console.error("playerId or secretId not set");
+                return;
+              }
               setErrorMessage(undefined);
               const messageId = uuid();
               handleMessageLoading(
@@ -359,7 +388,7 @@ export function Game() {
               );
               sendMessage({
                 action: "makeGame",
-                dataClient: { name },
+                dataClient: { name, playerId, secretId },
                 messageId,
               });
             }}
@@ -406,6 +435,10 @@ export function Game() {
           <button
             className="btn btn-primary btn-lg text-white"
             onClick={() => {
+              if (playerId == null || secretId == null) {
+                console.error("playerId or secretId not set");
+                return;
+              }
               setErrorMessage(undefined);
               const messageId = uuid();
               handleMessageLoading(
@@ -419,7 +452,7 @@ export function Game() {
               );
               sendMessage({
                 action: "joinGame",
-                dataClient: { name, gameCode },
+                dataClient: { name, gameCode, playerId, secretId },
                 messageId,
               });
             }}
@@ -476,15 +509,15 @@ export function Game() {
             {(progressGameLoading?.loading ?? false) &&
             !progressGameLoading?.error ? (
               <span className="loading loading-spinner"></span>
-            ) : playerRecords.length > 1 ? (
+            ) : playerPublicRecords.length > 1 ? (
               "Proceed"
             ) : (
               "Proceed without friends"
             )}
           </button>
           <div className="flex gap-3">
-            {playerRecords.map((connectionRecord) => (
-              <Avatar key={connectionRecord.sk} name={connectionRecord.name} />
+            {playerPublicRecords.map((connectionRecord) => (
+              <Avatar key={connectionRecord.id} name={connectionRecord.name} />
             ))}
           </div>
         </>
@@ -499,8 +532,8 @@ export function Game() {
             Wait for the game owner to proceed...
           </h1>
           <div className="flex gap-3">
-            {playerRecords.map((connectionRecord) => (
-              <Avatar key={connectionRecord.sk} name={connectionRecord.name} />
+            {playerPublicRecords.map((connectionRecord) => (
+              <Avatar key={connectionRecord.id} name={connectionRecord.name} />
             ))}
           </div>
         </>
@@ -513,8 +546,8 @@ export function Game() {
     content = (
       <div className="grid grid-rows-[1fr_1fr_1fr]">
         <Collage
-          connectionRecords={playerRecords}
-          myConnectionRecord={myPlayerRecord}
+          playerPublicRecords={playerPublicRecords}
+          myPlayerPublicRecord={myPlayerPublicRecord}
           imageRecords={imageRecords}
           myImageRecord={myImageRecord}
         />
@@ -534,6 +567,10 @@ export function Game() {
           <button
             className="btn btn-primary btn-lg text-white"
             onClick={() => {
+              if (playerId == null || secretId == null) {
+                console.error("playerId or secretId not set");
+                return;
+              }
               setErrorMessage(undefined);
               const messageId = uuid();
               handleMessageLoading(
@@ -547,7 +584,11 @@ export function Game() {
               );
               sendMessage({
                 action: "makeImage",
-                dataClient: { promptImage: promptImage.trim() },
+                dataClient: {
+                  promptImage: promptImage.trim(),
+                  playerId,
+                  secretId,
+                },
                 messageId,
               });
             }}
@@ -568,8 +609,8 @@ export function Game() {
         </div>
       </div>
     );
-    playerRecords.map((connectionRecord) => (
-      <Avatar key={connectionRecord.sk} name={connectionRecord.name} />
+    playerPublicRecords.map((connectionRecord) => (
+      <Avatar key={connectionRecord.id} name={connectionRecord.name} />
     ));
   } else if (
     gameMetaRecord.status === "playing" &&
@@ -578,10 +619,12 @@ export function Game() {
     content = (
       <div className="grid grid-rows-[1fr_1fr_1fr]">
         <SelectableCollage
-          connectionRecords={playerRecords}
-          myConnectionRecord={myPlayerRecord}
+          playerPublicRecords={playerPublicRecords}
+          myPlayerPublicRecord={myPlayerPublicRecord}
           imageRecords={imageRecords}
           myImageRecord={myImageRecord}
+          playerId={playerId}
+          secretId={secretId}
           sendMessage={sendMessage}
           setErrorMessage={setErrorMessage}
         />
@@ -594,8 +637,8 @@ export function Game() {
         </div>
       </div>
     );
-    playerRecords.map((connectionRecord) => (
-      <Avatar key={connectionRecord.sk} name={connectionRecord.name} />
+    playerPublicRecords.map((connectionRecord) => (
+      <Avatar key={connectionRecord.id} name={connectionRecord.name} />
     ));
   } else if (
     gameMetaRecord.status === "playing" &&
@@ -604,13 +647,15 @@ export function Game() {
     content = (
       <div className="grid grid-rows-[1fr_1fr_1fr]">
         <WinnerCollage
-          connectionRecords={playerRecords}
-          myConnectionRecord={myPlayerRecord}
+          playerPublicRecords={playerPublicRecords}
+          myPlayerPublicRecord={myPlayerPublicRecord}
           imageRecords={imageRecords}
           myImageRecord={myImageRecord}
           winningImageRecord={
             !winningImageRecord?.votes ? undefined : winningImageRecord
           }
+          playerId={playerId}
+          secretId={secretId}
           sendMessage={sendMessage}
           setErrorMessage={setErrorMessage}
         />
@@ -652,8 +697,8 @@ export function Game() {
         </div>
       </div>
     );
-    playerRecords.map((connectionRecord) => (
-      <Avatar key={connectionRecord.sk} name={connectionRecord.name} />
+    playerPublicRecords.map((connectionRecord) => (
+      <Avatar key={connectionRecord.id} name={connectionRecord.name} />
     ));
   }
 
@@ -686,49 +731,55 @@ export function Game() {
 }
 
 function Collage({
-  connectionRecords,
-  myConnectionRecord,
+  playerPublicRecords,
+  myPlayerPublicRecord,
   imageRecords,
   myImageRecord,
 }: {
-  connectionRecords: ConnectionRecord[];
-  myConnectionRecord?: ConnectionRecord;
+  playerPublicRecords: PlayerPublicRecord[];
+  myPlayerPublicRecord?: PlayerPublicRecord;
   imageRecords: ImageRecord[];
   myImageRecord: ImageRecord | undefined;
 }) {
   return (
     <>
       <div className="grid auto-rows-auto grid-cols-2">
-        {connectionRecords
+        {playerPublicRecords
           .filter(
-            (connectionRecord) =>
-              myConnectionRecord?.id !== connectionRecord.id,
+            (playerPublicRecord) =>
+              myPlayerPublicRecord?.id !== playerPublicRecord.id,
           )
-          .map((connectionRecord) => {
+          .map((playerPublicRecord) => {
             const imageRecord = imageRecords.filter(
               (imageRecord) =>
-                imageRecord.connectionId === connectionRecord.id.split("#")[1],
+                imageRecord.playerId === playerPublicRecord.id.split("#")[1],
             )[0];
             return imageRecord?.url ? (
               <Image
                 src={imageRecord.url}
-                alt={`${connectionRecord.name}'s image`}
-                key={connectionRecord.id}
+                alt={`${playerPublicRecord.name}'s image`}
+                key={playerPublicRecord.id}
                 width={128}
                 height={128}
               />
             ) : imageRecord?.loading ? (
               <div
-                key={connectionRecord.id}
+                key={playerPublicRecord.id}
                 className="skeleton w-32 h-32"
               ></div>
             ) : imageRecord?.error ? (
-              <div key={connectionRecord.id} className="bg-gray-200 w-32 h-32">
+              <div
+                key={playerPublicRecord.id}
+                className="bg-gray-200 w-32 h-32"
+              >
                 Try again!
               </div>
             ) : (
-              <span key={connectionRecord.id} className="bg-gray-200 w-32 h-32">
-                {connectionRecord.name}'s image
+              <span
+                key={playerPublicRecord.id}
+                className="bg-gray-200 w-32 h-32"
+              >
+                {playerPublicRecord.name}'s image
               </span>
             );
           })}
@@ -752,51 +803,59 @@ function Collage({
 }
 
 function SelectableCollage({
-  connectionRecords,
-  myConnectionRecord,
+  playerPublicRecords,
+  myPlayerPublicRecord,
   imageRecords,
   myImageRecord,
+  playerId,
+  secretId,
   sendMessage,
   setErrorMessage,
 }: {
-  connectionRecords: ConnectionRecord[];
-  myConnectionRecord?: ConnectionRecord;
+  playerPublicRecords: PlayerPublicRecord[];
+  myPlayerPublicRecord?: PlayerPublicRecord;
   imageRecords: ImageRecord[];
   myImageRecord: ImageRecord | undefined;
+  playerId: string | undefined;
+  secretId: string | undefined;
   sendMessage: (data: AnyClientMessage) => void;
   setErrorMessage: (message: string | undefined) => void;
 }) {
   return (
     <>
       <div className="grid auto-rows-auto grid-cols-2">
-        {connectionRecords
+        {playerPublicRecords
           .filter(
-            (connectionRecord) =>
-              myConnectionRecord?.id !== connectionRecord.id,
+            (playerPublicRecord) =>
+              myPlayerPublicRecord?.id !== playerPublicRecord.id,
           )
-          .map((connectionRecord) => {
+          .map((playerPublicRecord) => {
             const imageRecord = imageRecords.filter(
               (imageRecord) =>
-                imageRecord.connectionId === connectionRecord.id.split("#")[1],
+                imageRecord.playerId === playerPublicRecord.id.split("#")[1],
             )[0];
             const isSelected =
-              myConnectionRecord?.votedImageId ===
-              imageRecord?.sk.split("#")[1];
+              myPlayerPublicRecord?.votedImageId ===
+              imageRecord?.id.split("#")[1];
             return imageRecord?.url ? (
-              <div className="relative" key={connectionRecord.id}>
+              <div className="relative" key={playerPublicRecord.id}>
                 <Image
                   src={imageRecord.url}
-                  alt={`${connectionRecord.name}'s image`}
+                  alt={`${playerPublicRecord.name}'s image`}
                   width={128}
                   height={128}
                   className={`border-2 cursor-pointer ${isSelected ? "border-green-500" : "border-transparent"}`}
                   onClick={() => {
-                    const imageId = imageRecord?.sk.split("#")[1];
+                    if (playerId == null || secretId == null) {
+                      console.error("playerId or secretId not set");
+                      return;
+                    }
+                    const imageId = imageRecord?.id.split("#")[1];
                     if (imageId != null) {
                       setErrorMessage(undefined);
                       sendMessage({
                         action: "vote",
-                        dataClient: { imageId: imageId },
+                        dataClient: { imageId: imageId, playerId, secretId },
                         messageId: uuid(),
                       });
                     }
@@ -822,15 +881,21 @@ function SelectableCollage({
               </div>
             ) : imageRecord?.loading ? (
               <div
-                key={connectionRecord.id}
+                key={playerPublicRecord.id}
                 className="skeleton w-32 h-32"
               ></div>
             ) : imageRecord?.error ? (
-              <div key={connectionRecord.id} className="bg-gray-200 w-32 h-32">
+              <div
+                key={playerPublicRecord.id}
+                className="bg-gray-200 w-32 h-32"
+              >
                 Try again!
               </div>
             ) : (
-              <span key={connectionRecord.id} className="bg-gray-200 w-32 h-32">
+              <span
+                key={playerPublicRecord.id}
+                className="bg-gray-200 w-32 h-32"
+              >
                 No image generated :-(
               </span>
             );
@@ -844,20 +909,24 @@ function SelectableCollage({
             width={256}
             height={256}
             onClick={() => {
-              const imageId = myImageRecord?.sk.split("#")[1];
+              if (playerId == null || secretId == null) {
+                console.error("playerId or secretId not set");
+                return;
+              }
+              const imageId = myImageRecord?.id.split("#")[1];
               if (imageId != null) {
                 setErrorMessage(undefined);
                 sendMessage({
                   action: "vote",
-                  dataClient: { imageId: imageId },
+                  dataClient: { imageId: imageId, playerId, secretId },
                   messageId: uuid(),
                 });
               }
             }}
-            className={`border-2 cursor-pointer ${myConnectionRecord?.votedImageId === myImageRecord.sk.split("#")[1] ? "border-green-500" : "border-transparent"}`}
+            className={`border-2 cursor-pointer ${myPlayerPublicRecord?.votedImageId === myImageRecord.id.split("#")[1] ? "border-green-500" : "border-transparent"}`}
           />
-          {myConnectionRecord?.votedImageId ===
-            myImageRecord.sk.split("#")[1] && (
+          {myPlayerPublicRecord?.votedImageId ===
+            myImageRecord.id.split("#")[1] && (
             <div className="absolute top-2 right-2 w-6 h-6 bg-green-500 flex justify-center items-center">
               {/* SVG for the tick mark or use an icon library like FontAwesome */}
               <svg
@@ -887,51 +956,59 @@ function SelectableCollage({
 }
 
 function WinnerCollage({
-  connectionRecords,
-  myConnectionRecord,
+  playerPublicRecords,
+  myPlayerPublicRecord,
   imageRecords,
   myImageRecord,
   winningImageRecord,
+  playerId,
+  secretId,
   sendMessage,
   setErrorMessage,
 }: {
-  connectionRecords: ConnectionRecord[];
-  myConnectionRecord?: ConnectionRecord;
+  playerPublicRecords: PlayerPublicRecord[];
+  myPlayerPublicRecord?: PlayerPublicRecord;
   imageRecords: ImageRecord[];
   myImageRecord: ImageRecord | undefined;
   winningImageRecord?: ImageRecord;
+  playerId: string | undefined;
+  secretId: string | undefined;
   sendMessage: (data: AnyClientMessage) => void;
   setErrorMessage: (message: string | undefined) => void;
 }) {
   return (
     <>
       <div className="grid auto-rows-auto grid-cols-2">
-        {connectionRecords
+        {playerPublicRecords
           .filter(
-            (connectionRecord) =>
-              myConnectionRecord?.id !== connectionRecord.id,
+            (playerPublicRecord) =>
+              myPlayerPublicRecord?.id !== playerPublicRecord.id,
           )
-          .map((connectionRecord) => {
+          .map((playerPublicRecord) => {
             const imageRecord = imageRecords.filter(
               (imageRecord) =>
-                imageRecord.connectionId === connectionRecord.id.split("#")[1],
+                imageRecord.playerId === playerPublicRecord.id.split("#")[1],
             )[0];
-            const isWinning = winningImageRecord?.sk === imageRecord?.sk;
+            const isWinning = winningImageRecord?.id === imageRecord?.id;
             return imageRecord?.url ? (
-              <div className="relative" key={connectionRecord.id}>
+              <div className="relative" key={playerPublicRecord.id}>
                 <Image
                   src={imageRecord.url}
-                  alt={`${connectionRecord.name}'s image`}
+                  alt={`${playerPublicRecord.name}'s image`}
                   width={128}
                   height={128}
                   className={`border-2 cursor-pointer ${isWinning ? "border-yellow-500" : "border-transparent"}`}
                   onClick={() => {
-                    const imageId = imageRecord?.sk.split("#")[1];
+                    if (playerId == null || secretId == null) {
+                      console.error("playerId or secretId not set");
+                      return;
+                    }
+                    const imageId = imageRecord?.id.split("#")[1];
                     if (imageId != null) {
                       setErrorMessage(undefined);
                       sendMessage({
                         action: "vote",
-                        dataClient: { imageId: imageId },
+                        dataClient: { imageId: imageId, playerId, secretId },
                         messageId: uuid(),
                       });
                     }
@@ -943,15 +1020,21 @@ function WinnerCollage({
               </div>
             ) : imageRecord?.loading ? (
               <div
-                key={connectionRecord.id}
+                key={playerPublicRecord.id}
                 className="skeleton w-32 h-32"
               ></div>
             ) : imageRecord?.error ? (
-              <div key={connectionRecord.id} className="bg-gray-200 w-32 h-32">
+              <div
+                key={playerPublicRecord.id}
+                className="bg-gray-200 w-32 h-32"
+              >
                 Try again!
               </div>
             ) : (
-              <span key={connectionRecord.id} className="bg-gray-200 w-32 h-32">
+              <span
+                key={playerPublicRecord.id}
+                className="bg-gray-200 w-32 h-32"
+              >
                 No image generated :-(
               </span>
             );
@@ -964,9 +1047,9 @@ function WinnerCollage({
             alt="your image"
             width={256}
             height={256}
-            className={`border-2 ${winningImageRecord?.sk === myImageRecord.sk ? "border-yellow-500" : "border-transparent"}`}
+            className={`border-2 ${winningImageRecord?.id === myImageRecord.id ? "border-yellow-500" : "border-transparent"}`}
           />
-          {winningImageRecord?.sk === myImageRecord.sk && (
+          {winningImageRecord?.id === myImageRecord.id && (
             <StarIcon className="absolute top-2 right-2 h-6 w-6 text-yellow-500" />
           )}
         </div>

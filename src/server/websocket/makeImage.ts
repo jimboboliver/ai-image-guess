@@ -1,6 +1,7 @@
 import { ApiGatewayManagementApiClient } from "@aws-sdk/client-apigatewaymanagementapi";
 import {
   DynamoDB,
+  GetItemCommand,
   PutItemCommand,
   QueryCommand,
 } from "@aws-sdk/client-dynamodb";
@@ -13,6 +14,7 @@ import { v4 as uuidv4 } from "uuid";
 
 import type { ConnectionRecord } from "../db/dynamodb/connection";
 import type { ImageRecord } from "../db/dynamodb/image";
+import type { PlayerRecord } from "../db/dynamodb/player";
 import { sendMessageToAllGameConnections } from "../utils/sendMessageToAllGameConnections";
 import {
   makeImageMessageSchema,
@@ -107,13 +109,13 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
         body: JSON.stringify(response),
       };
     }
-    throw error;
+    throw new Error();
   }
 
   // get connection from db
   const connectionResponse = await ddbClient.send(
     new QueryCommand({
-      TableName: Table.chimpin.tableName,
+      TableName: Table.chimpin2.tableName,
       IndexName: "idIndex",
       KeyConditionExpression: "id = :id",
       ExpressionAttributeValues: marshall({
@@ -130,18 +132,34 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   const connectionRecord = unmarshall(
     connectionResponse.Items[0]!,
   ) as ConnectionRecord;
+  const playerDdbResponse = await ddbClient.send(
+    new GetItemCommand({
+      TableName: Table.chimpin2.tableName,
+      Key: marshall({
+        game: connectionRecord.game,
+        id: `player#${message.dataClient.playerId}`,
+      }),
+    }),
+  );
+  if (playerDdbResponse.Item == null) {
+    throw new Error("No such player");
+  }
+  const playerRecord = unmarshall(playerDdbResponse.Item) as PlayerRecord;
+  if (playerRecord.secretId !== message.dataClient.secretId) {
+    throw new Error("Incorrect secret");
+  }
 
   // put image record into db while it's loading
   const imageRecord: ImageRecord = {
-    pk: connectionRecord.pk,
-    sk: `image#${uuidv4()}`,
-    connectionId: event.requestContext.connectionId,
+    game: connectionRecord.game,
+    id: `image#${uuidv4()}`,
+    playerId: message.dataClient.playerId,
     promptImage: message.dataClient.promptImage,
     loading: true,
   };
   await ddbClient.send(
     new PutItemCommand({
-      TableName: Table.chimpin.tableName,
+      TableName: Table.chimpin2.tableName,
       Item: marshall(imageRecord),
     }),
   );
@@ -150,9 +168,11 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
       endpoint: `https://${event.requestContext.domainName}/${event.requestContext.stage}`,
     });
   }
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { secretId, ...playerPublicRecord } = playerRecord;
   await sendMessageToAllGameConnections(
-    connectionRecord.pk.split("#")[1]!,
-    { dataServer: { imageRecord, connectionRecord }, action: "imageLoading" },
+    connectionRecord.game.split("#")[1]!,
+    { dataServer: { imageRecord, playerPublicRecord }, action: "imageLoading" },
     ddbClient,
     apiClient,
   );
@@ -175,14 +195,14 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
     imageRecord.error = true;
     await ddbClient.send(
       new PutItemCommand({
-        TableName: Table.chimpin.tableName,
+        TableName: Table.chimpin2.tableName,
         Item: marshall(imageRecord),
       }),
     );
     await sendMessageToAllGameConnections(
-      connectionRecord.pk.split("#")[1]!,
+      connectionRecord.game.split("#")[1]!,
       {
-        dataServer: { imageRecord, connectionRecord },
+        dataServer: { imageRecord, playerPublicRecord },
         action: "imageError",
       },
       ddbClient,
@@ -206,13 +226,16 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   imageRecord.loading = false;
   await ddbClient.send(
     new PutItemCommand({
-      TableName: Table.chimpin.tableName,
+      TableName: Table.chimpin2.tableName,
       Item: marshall(imageRecord),
     }),
   );
   await sendMessageToAllGameConnections(
-    connectionRecord.pk.split("#")[1]!,
-    { dataServer: { imageRecord, connectionRecord }, action: "imageGenerated" },
+    connectionRecord.game.split("#")[1]!,
+    {
+      dataServer: { imageRecord, playerPublicRecord },
+      action: "imageGenerated",
+    },
     ddbClient,
     apiClient,
   );

@@ -1,5 +1,9 @@
 import { ApiGatewayManagementApiClient } from "@aws-sdk/client-apigatewaymanagementapi";
-import { DynamoDB, PutItemCommand } from "@aws-sdk/client-dynamodb";
+import {
+  DynamoDB,
+  GetItemCommand,
+  PutItemCommand,
+} from "@aws-sdk/client-dynamodb";
 import { marshall } from "@aws-sdk/util-dynamodb";
 import type { APIGatewayProxyWebsocketHandlerV2 } from "aws-lambda";
 import { Table } from "sst/node/table";
@@ -50,24 +54,39 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
         body: JSON.stringify(response),
       };
     }
-    throw error;
+    throw new Error();
   }
+
+  // generate game code and create game
   const gameCode = generateRandomCode();
   const gameMetaRecord: GameMetaRecord = {
-    pk: `game#${gameCode}`,
-    sk: "meta",
+    game: `game#${gameCode}`,
+    id: "meta",
     status: "lobby",
     gameCode: gameCode,
     ownerConnectionId: event.requestContext.connectionId,
     gameType: "chimpin",
   };
 
-  console.debug("Creating game", gameMetaRecord);
+  // check that game doesn't exist
+  const gameMetaDdbResponse = await ddbClient.send(
+    new GetItemCommand({
+      TableName: Table.chimpin2.tableName,
+      Key: marshall({
+        game: `game#${gameCode}`,
+        id: "meta",
+      }),
+    }),
+  );
+  if (gameMetaDdbResponse.Item != null) {
+    throw new Error("Game already exists!");
+  }
 
-  // TODO check game doesn't exist
+  // add game to database
+  console.debug("Creating game", gameMetaRecord);
   await ddbClient.send(
     new PutItemCommand({
-      TableName: Table.chimpin.tableName,
+      TableName: Table.chimpin2.tableName,
       Item: marshall(gameMetaRecord),
     }),
   );
@@ -78,13 +97,19 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
     });
   }
 
-  const connectionRecord = await addConnectionToGame(
+  // add the connection to the game
+  const addConnectionToGameResponse = await addConnectionToGame(
     event.requestContext.connectionId,
     gameCode,
     message.dataClient.name,
+    message.dataClient.playerId,
+    message.dataClient.secretId,
     ddbClient,
   );
+  const connectionRecord = addConnectionToGameResponse.connectionRecord;
+  const playerRecord = addConnectionToGameResponse.playerRecord;
 
+  // send full game to new connection
   await sendFullGame(
     event.requestContext.connectionId,
     gameCode,
@@ -92,9 +117,12 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
     apiClient,
   );
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { secretId, ...playerPublicRecord } = playerRecord;
+
   const response: MakeGameResponse = {
     ...message,
-    dataServer: connectionRecord,
+    dataServer: { connectionRecord, playerPublicRecord },
     serverStatus: "success",
   };
   return {

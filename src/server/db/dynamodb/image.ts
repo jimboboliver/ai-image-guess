@@ -7,7 +7,7 @@ export const promptImageMaxLength = 256;
 
 export const imageRecordSchema = baseRecord.extend({
   url: z.string().optional(),
-  connectionId: z.string(),
+  playerId: z.string(),
   votes: z.number().optional(),
   promptImage: z.string().min(promptImageMinLength).max(promptImageMaxLength),
   loading: z.boolean(),

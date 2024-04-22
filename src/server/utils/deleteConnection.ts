@@ -9,11 +9,11 @@ import { Table } from "sst/node/table";
 
 import type { ConnectionRecord } from "../db/dynamodb/connection";
 
-export async function deletePlayer(connectionId: string) {
+export async function deleteConnection(connectionId: string) {
   const ddbClient = new DynamoDB();
   const connectionDdbResponse = await ddbClient.send(
     new QueryCommand({
-      TableName: Table.chimpin.tableName,
+      TableName: Table.chimpin2.tableName,
       IndexName: "idIndex",
       KeyConditionExpression: "id = :id",
       ExpressionAttributeValues: marshall({
@@ -21,12 +21,12 @@ export async function deletePlayer(connectionId: string) {
       }),
     }),
   );
-  const deletePlayer = async function (
+  const deleteConnection = async function (
     connectionRecord: Record<string, AttributeValue>,
   ) {
     await ddbClient.send(
       new DeleteItemCommand({
-        TableName: Table.chimpin.tableName,
+        TableName: Table.chimpin2.tableName,
         Key: {
           game: connectionRecord.game!,
           id: connectionRecord.id!,
@@ -35,7 +35,7 @@ export async function deletePlayer(connectionId: string) {
     );
   };
 
-  await Promise.all(connectionDdbResponse.Items?.map(deletePlayer) ?? []);
+  await Promise.all(connectionDdbResponse.Items?.map(deleteConnection) ?? []);
 
   return (
     connectionDdbResponse.Items?.map(

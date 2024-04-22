@@ -45,13 +45,13 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
         body: JSON.stringify(response),
       };
     }
-    throw error;
+    throw new Error();
   }
 
   // get connection from db
   const connectionResponse = await ddbClient.send(
     new QueryCommand({
-      TableName: Table.chimpin.tableName,
+      TableName: Table.chimpin2.tableName,
       IndexName: "idIndex",
       KeyConditionExpression: "id = :id",
       ExpressionAttributeValues: marshall({
@@ -73,9 +73,9 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   const gameDdbRecord = (
     await ddbClient.send(
       new GetItemCommand({
-        TableName: Table.chimpin.tableName,
+        TableName: Table.chimpin2.tableName,
         Key: marshall({
-          game: connectionRecord.pk,
+          game: connectionRecord.game,
           id: "meta",
         }),
       }),
@@ -104,9 +104,9 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   }
   await ddbClient.send(
     new UpdateItemCommand({
-      TableName: Table.chimpin.tableName,
+      TableName: Table.chimpin2.tableName,
       Key: marshall({
-        game: connectionRecord.pk,
+        game: connectionRecord.game,
         id: "meta",
       }),
       UpdateExpression: updateExpression,
@@ -114,13 +114,16 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
       ExpressionAttributeValues: marshall(expressionAttributeValues),
     }),
   );
+
   if (apiClient == null) {
     apiClient = new ApiGatewayManagementApiClient({
       endpoint: `https://${event.requestContext.domainName}/${event.requestContext.stage}`,
     });
   }
+
+  // send message to all connections
   await sendMessageToAllGameConnections(
-    connectionRecord.pk.split("#")[1]!,
+    connectionRecord.game.split("#")[1]!,
     { dataServer: gameRecord, action: "progressedGame" },
     ddbClient,
     apiClient,

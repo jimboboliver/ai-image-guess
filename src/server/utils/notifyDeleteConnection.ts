@@ -8,20 +8,20 @@ import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import { Table } from "sst/node/table";
 
 import type { ConnectionRecord } from "../db/dynamodb/connection";
-import type { DeletePlayerMessage } from "../websocket/messageschema/server2client/deletePlayer";
-import { deletePlayer } from "./deletePlayer";
+import type { DeleteConnectionMessage } from "../websocket/messageschema/server2client/deleteConnection";
+import { deleteConnection } from "./deleteConnection";
 
-export async function notifyDeletePlayer(
+export async function notifyDeleteConnection(
   connectionRecord: ConnectionRecord,
   ddbClient: DynamoDB,
   apiClient: ApiGatewayManagementApiClient,
 ) {
   const existingConnectionResponse = await ddbClient.send(
     new QueryCommand({
-      TableName: Table.chimpin.tableName,
+      TableName: Table.chimpin2.tableName,
       KeyConditionExpression: "game = :game AND begins_with(id, :connection)",
       ExpressionAttributeValues: marshall({
-        ":game": connectionRecord.pk,
+        ":game": connectionRecord.game,
         ":connection": "connection",
       }),
     }),
@@ -29,14 +29,14 @@ export async function notifyDeletePlayer(
 
   for (const item of existingConnectionResponse.Items ?? []) {
     const existingConnectionRecord = unmarshall(item) as ConnectionRecord;
-    const connectionId = existingConnectionRecord.sk.split("#")[1];
+    const connectionId = existingConnectionRecord.id.split("#")[1];
     try {
       console.debug(
         "Sending message to a connection",
-        existingConnectionRecord.sk.split("#")[1],
+        existingConnectionRecord.id.split("#")[1],
       );
-      const fullGameMessage: DeletePlayerMessage = {
-        action: "deletePlayer",
+      const fullGameMessage: DeleteConnectionMessage = {
+        action: "deleteConnection",
         dataServer: connectionRecord,
       };
       await apiClient.send(
@@ -49,11 +49,11 @@ export async function notifyDeletePlayer(
       if (error instanceof GoneException) {
         console.debug("Connection was closed");
         if (connectionId != null) {
-          await deletePlayer(connectionId);
+          await deleteConnection(connectionId);
         }
         return;
       }
-      throw error;
+      throw new Error();
     }
   }
 }

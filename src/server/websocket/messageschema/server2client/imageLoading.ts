@@ -1,12 +1,12 @@
 import { imageRecordSchema } from "~/server/db/dynamodb/image";
-import { playerRecordSchema } from "~/server/db/dynamodb/player";
+import { playerPublicRecordSchema } from "~/server/db/dynamodb/player";
 import { z } from "zod";
 
 export const imageLoadingMessageSchema = z.object({
   action: z.literal("imageLoading"),
   dataServer: z.object({
     imageRecord: imageRecordSchema,
-    playerRecord: playerRecordSchema,
+    playerPublicRecord: playerPublicRecordSchema,
   }),
 });
 

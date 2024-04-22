@@ -11,14 +11,14 @@ export default {
   },
   stacks(app) {
     app.stack(function Site({ stack }) {
-      const table = new Table(stack, "chimpin", {
+      const table = new Table(stack, "chimpin2", {
         fields: {
-          pk: "string",
-          sk: "string",
+          game: "string",
+          id: "string",
         },
-        primaryIndex: { partitionKey: "pk", sortKey: "sk" },
+        primaryIndex: { partitionKey: "game", sortKey: "id" },
         globalIndexes: {
-          idIndex: { partitionKey: "sk", sortKey: "pk" },
+          idIndex: { partitionKey: "id", sortKey: "game" },
         },
       });
       const api = new WebSocketApi(stack, "Api", {

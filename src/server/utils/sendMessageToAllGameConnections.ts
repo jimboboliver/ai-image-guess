@@ -12,7 +12,7 @@ import { marshall } from "@aws-sdk/util-dynamodb";
 import { Table } from "sst/node/table";
 
 import type { AnyServerMessage } from "../websocket/messageschema/server2client/any";
-import { deletePlayer } from "./deletePlayer";
+import { deleteConnection } from "./deleteConnection";
 
 export async function sendMessageToAllGameConnections(
   gameId: string,
@@ -22,7 +22,7 @@ export async function sendMessageToAllGameConnections(
 ) {
   const connectionDdbResponse = await ddbClient.send(
     new QueryCommand({
-      TableName: Table.chimpin.tableName,
+      TableName: Table.chimpin2.tableName,
       KeyConditionExpression: "game = :game and begins_with(id, :idPrefix)",
       ExpressionAttributeValues: marshall({
         ":game": `game#${gameId}`,
@@ -47,11 +47,11 @@ export async function sendMessageToAllGameConnections(
       if (error instanceof GoneException) {
         console.debug("Connection was closed");
         if (connectionId != null) {
-          await deletePlayer(connectionId);
+          await deleteConnection(connectionId);
         }
         return;
       }
-      throw error;
+      throw new Error();
     }
   };
 

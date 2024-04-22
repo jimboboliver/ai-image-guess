@@ -1,10 +1,12 @@
 import { ApiGatewayManagementApiClient } from "@aws-sdk/client-apigatewaymanagementapi";
-import { DynamoDB } from "@aws-sdk/client-dynamodb";
+import { DynamoDB, GetItemCommand } from "@aws-sdk/client-dynamodb";
+import { marshall } from "@aws-sdk/util-dynamodb";
 import type { APIGatewayProxyWebsocketHandlerV2 } from "aws-lambda";
+import { Table } from "sst/node/table";
 
-import type { ConnectionRecord } from "../db/dynamodb/connection";
 import { addConnectionToGame } from "../utils/addConnectionToGame";
-import { notifyNewPlayer } from "../utils/notifyNewPlayer";
+import { notifyDeleteConnection } from "../utils/notifyDeleteConnection";
+import { notifyNewConnection } from "../utils/notifyNewConnection";
 import { sendFullGame } from "../utils/sendFullGame";
 import {
   joinGameMessageSchema,
@@ -39,31 +41,39 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
         body: JSON.stringify(response),
       };
     }
-    throw error;
+    throw new Error();
   }
 
-  let connectionRecord: ConnectionRecord;
-  try {
-    connectionRecord = await addConnectionToGame(
+  const gameMetaDdbResponse = await ddbClient.send(
+    new GetItemCommand({
+      TableName: Table.chimpin2.tableName,
+      Key: marshall({
+        game: `game#${message.dataClient.gameCode}`,
+        id: "meta",
+      }),
+    }),
+  );
+  if (gameMetaDdbResponse.Item == null) {
+    console.warn("No such game");
+    const response: JoinGameResponse = {
+      ...message,
+      serverStatus: "bad request",
+    };
+    return {
+      statusCode: 400,
+      body: JSON.stringify(response),
+    };
+  }
+
+  const { connectionRecord, playerRecord, deletedConnectionRecords } =
+    await addConnectionToGame(
       event.requestContext.connectionId,
       message.dataClient.gameCode,
       message.dataClient.name,
+      message.dataClient.playerId,
+      message.dataClient.secretId,
       ddbClient,
     );
-  } catch (error) {
-    if (error instanceof Error && error.message === "No such game") {
-      console.warn("No such game");
-      const response: JoinGameResponse = {
-        ...message,
-        serverStatus: "bad request",
-      };
-      return {
-        statusCode: 400,
-        body: JSON.stringify(response),
-      };
-    }
-    throw error;
-  }
 
   if (apiClient == null) {
     apiClient = new ApiGatewayManagementApiClient({
@@ -71,8 +81,20 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
     });
   }
 
-  await notifyNewPlayer(connectionRecord, ddbClient, apiClient);
+  // notify all deleted connections (if any)
+  for (const deletedConnectionRecord of deletedConnectionRecords) {
+    await notifyDeleteConnection(deletedConnectionRecord, ddbClient, apiClient);
+  }
 
+  // notify other connections of new connection
+  await notifyNewConnection(
+    connectionRecord,
+    playerRecord,
+    ddbClient,
+    apiClient,
+  );
+
+  // send full game to new connection
   await sendFullGame(
     event.requestContext.connectionId,
     message.dataClient.gameCode,
@@ -80,9 +102,15 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
     apiClient,
   );
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { secretId, ...playerPublicRecord } = playerRecord;
+
   const response: JoinGameResponse = {
     ...message,
-    dataServer: connectionRecord,
+    dataServer: {
+      connectionRecord,
+      playerPublicRecord,
+    },
     serverStatus: "success",
   };
   return {

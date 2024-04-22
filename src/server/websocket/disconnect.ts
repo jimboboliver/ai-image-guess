@@ -2,8 +2,8 @@ import { ApiGatewayManagementApiClient } from "@aws-sdk/client-apigatewaymanagem
 import { DynamoDB } from "@aws-sdk/client-dynamodb";
 import type { APIGatewayProxyWebsocketHandlerV2 } from "aws-lambda";
 
-import { deletePlayer } from "../utils/deletePlayer";
-import { notifyDeletePlayer } from "../utils/notifyDeletePlayer";
+import { deleteConnection } from "../utils/deleteConnection";
+import { notifyDeleteConnection } from "../utils/notifyDeleteConnection";
 
 const ddbClient = new DynamoDB();
 
@@ -15,7 +15,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
     throw new Error("No connectionId");
   }
 
-  const deletedConnectionRecords = await deletePlayer(
+  const deletedConnectionRecords = await deleteConnection(
     event.requestContext.connectionId,
   );
 
@@ -26,7 +26,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   }
 
   for (const deletedConnectionRecord of deletedConnectionRecords) {
-    await notifyDeletePlayer(deletedConnectionRecord, ddbClient, apiClient);
+    await notifyDeleteConnection(deletedConnectionRecord, ddbClient, apiClient);
   }
 
   return { statusCode: 200 };

@@ -1,5 +1,6 @@
-import { playerRecordSchema } from "~/server/db/dynamodb/player";
-import type { z } from "zod";
+import { connectionRecordSchema } from "~/server/db/dynamodb/connection";
+import { playerPublicRecordSchema } from "~/server/db/dynamodb/player";
+import { z } from "zod";
 
 import { joinGameMessageSchema } from "../../client2server/joinGame";
 import { directResponseSchema } from "./directResponseSchema";
@@ -7,7 +8,12 @@ import { directResponseSchema } from "./directResponseSchema";
 export const joinGameResponseSchema = joinGameMessageSchema
   .extend({
     dataClient: joinGameMessageSchema.shape.dataClient.optional(),
-    dataServer: playerRecordSchema.optional(),
+    dataServer: z
+      .object({
+        playerPublicRecord: playerPublicRecordSchema,
+        connectionRecord: connectionRecordSchema,
+      })
+      .optional(),
   })
   .extend(directResponseSchema.shape)
   .refine((data) => {

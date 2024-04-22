@@ -1,6 +1,7 @@
 import { ApiGatewayManagementApiClient } from "@aws-sdk/client-apigatewaymanagementapi";
 import {
   DynamoDB,
+  GetItemCommand,
   QueryCommand,
   UpdateItemCommand,
 } from "@aws-sdk/client-dynamodb";
@@ -10,6 +11,7 @@ import { Table } from "sst/node/table";
 
 import type { ConnectionRecord } from "../db/dynamodb/connection";
 import type { ImageRecord } from "../db/dynamodb/image";
+import type { PlayerRecord } from "../db/dynamodb/player";
 import { sendMessageToAllGameConnections } from "../utils/sendMessageToAllGameConnections";
 import {
   voteMessageSchema,
@@ -44,7 +46,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
         body: JSON.stringify(response),
       };
     }
-    throw error;
+    throw new Error();
   }
 
   if (apiClient == null) {
@@ -53,13 +55,14 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
     });
   }
 
+  // check that the player hasn't voted yet
   const connectionResponse = await ddbClient.send(
     new QueryCommand({
-      TableName: Table.chimpin.tableName,
+      TableName: Table.chimpin2.tableName,
       IndexName: "idIndex",
-      KeyConditionExpression: "pk = :pk",
+      KeyConditionExpression: "id = :id",
       ExpressionAttributeValues: marshall({
-        ":pk": `connection#${event.requestContext.connectionId}`,
+        ":id": `connection#${event.requestContext.connectionId}`,
       }),
     }),
   );
@@ -72,8 +75,23 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   const connectionRecord = unmarshall(
     connectionResponse.Items[0]!,
   ) as ConnectionRecord;
-
-  if (connectionRecord.votedImageId) {
+  const playerDdbResponse = await ddbClient.send(
+    new GetItemCommand({
+      TableName: Table.chimpin2.tableName,
+      Key: marshall({
+        game: connectionRecord.game,
+        id: `player#${message.dataClient.playerId}`,
+      }),
+    }),
+  );
+  if (playerDdbResponse.Item == null) {
+    throw new Error("No such player");
+  }
+  const playerRecord = unmarshall(playerDdbResponse.Item) as PlayerRecord;
+  if (playerRecord.secretId !== message.dataClient.secretId) {
+    throw new Error("Incorrect secret");
+  }
+  if (playerRecord.votedImageId) {
     const response: VoteResponse = {
       ...message,
       serverStatus: "bad request",
@@ -87,10 +105,10 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   // get image from db
   const imageResponse = await ddbClient.send(
     new QueryCommand({
-      TableName: Table.chimpin.tableName,
+      TableName: Table.chimpin2.tableName,
       KeyConditionExpression: "game = :game and id = :id",
       ExpressionAttributeValues: marshall({
-        ":game": connectionRecord.pk,
+        ":game": connectionRecord.game,
         ":id": `image#${message.dataClient.imageId}`,
       }),
     }),
@@ -101,32 +119,53 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
 
   const imageRecord = unmarshall(imageResponse.Items[0]!) as ImageRecord;
 
-  // update connection
-  connectionRecord.votedImageId = message.dataClient.imageId;
-  await ddbClient.send(
-    new UpdateItemCommand({
-      TableName: Table.chimpin.tableName,
-      Key: marshall({
-        game: connectionRecord.pk,
-        id: connectionRecord.sk,
+  // update the player record with the votedImageId
+  playerRecord.votedImageId = message.dataClient.imageId;
+  try {
+    await ddbClient.send(
+      new UpdateItemCommand({
+        TableName: Table.chimpin2.tableName,
+        Key: marshall({
+          game: connectionRecord.game,
+          id: `player#${message.dataClient.playerId}`,
+        }),
+        UpdateExpression: "SET votedImageId = :votedImageId",
+        ExpressionAttributeValues: marshall({
+          ":votedImageId": message.dataClient.imageId,
+          ":expectedSecretId": message.dataClient.secretId,
+        }),
+        ConditionExpression:
+          "attribute_not_exists(id) OR secretId = :expectedSecretId",
+        ReturnValues: "ALL_NEW",
       }),
-      UpdateExpression: "SET #votedImageId = :votedImageId",
-      ExpressionAttributeNames: {
-        "#votedImageId": "votedImageId",
-      },
-      ExpressionAttributeValues: marshall({
-        ":votedImageId": connectionRecord.votedImageId,
-      }),
-    }),
-  );
+    );
+  } catch (error: unknown) {
+    if (
+      error instanceof Error &&
+      error.name === "ConditionalCheckFailedException"
+    ) {
+      const msg = "Incorrect secret";
+      console.error(msg, error.message);
+      throw new Error(msg);
+    } else if (error instanceof Error) {
+      const msg = "Error updating or inserting item";
+      console.error(msg, error.message);
+      throw new Error(msg);
+    } else {
+      const msg = "An unexpected error occurred";
+      console.error(msg, error);
+      throw new Error(msg);
+    }
+  }
+
   // update image
   imageRecord.votes = (imageRecord.votes ?? 0) + 1;
   // TODO handle race to update vote count
   await ddbClient.send(
     new UpdateItemCommand({
-      TableName: Table.chimpin.tableName,
+      TableName: Table.chimpin2.tableName,
       Key: marshall({
-        game: connectionRecord.pk,
+        game: connectionRecord.game,
         id: `image#${message.dataClient.imageId}`,
       }),
       UpdateExpression: "SET #votes = :votes",
@@ -139,16 +178,26 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
     }),
   );
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { secretId, ...playerPublicRecord } = playerRecord;
+
   // send vote to all connections
   await sendMessageToAllGameConnections(
-    connectionRecord.pk.split("#")[1]!,
-    { dataServer: { imageRecord, connectionRecord }, action: "voted" },
+    connectionRecord.game.split("#")[1]!,
+    {
+      dataServer: { imageRecord, playerPublicRecord },
+      action: "voted",
+    },
     ddbClient,
     apiClient,
   );
 
   const response: VoteResponse = {
     ...message,
+    dataServer: {
+      imageRecord,
+      playerPublicRecord,
+    },
     serverStatus: "success",
   };
   return {

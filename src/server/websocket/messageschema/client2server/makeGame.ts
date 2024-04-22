@@ -1,4 +1,4 @@
-import { playerRecordSchema } from "~/server/db/dynamodb/connection";
+import { playerRecordSchema } from "~/server/db/dynamodb/player";
 import { z } from "zod";
 
 import { baseMessageSchema } from "./base";
@@ -7,6 +7,8 @@ export const makeGameMessageSchema = baseMessageSchema.extend({
   action: z.literal("makeGame"),
   dataClient: z.object({
     name: playerRecordSchema.shape.name,
+    playerId: z.string(),
+    secretId: playerRecordSchema.shape.secretId,
   }),
 });
 

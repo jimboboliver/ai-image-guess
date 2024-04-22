@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { deletePlayerMessageSchema } from "./deletePlayer";
+import { deleteConnectionMessageSchema } from "./deleteConnection";
 import { fullGameMessageSchema } from "./fullGame";
 import { imageErrorMessageSchema } from "./imageError";
 import { imageGeneratedMessageSchema } from "./imageGenerated";
@@ -24,7 +24,7 @@ export const anyServerMessageSchema = z.union([
   progressedGameMessageSchema,
   votedMessageSchema,
   newPlayerMessageSchema,
-  deletePlayerMessageSchema,
+  deleteConnectionMessageSchema,
   // client2server message response
   internalServerErrorMessageSchema,
   joinGameResponseSchema,

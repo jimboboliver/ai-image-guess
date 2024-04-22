@@ -1,8 +1,8 @@
 import { z } from "zod";
 
 export const baseRecord = z.object({
-  pk: z.string(),
-  sk: z.string(),
+  game: z.string(),
+  id: z.string(),
 });
 
 export type BaseRecord = z.infer<typeof baseRecord>;

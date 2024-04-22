@@ -6,6 +6,8 @@ export const voteMessageSchema = baseMessageSchema.extend({
   action: z.literal("vote"),
   dataClient: z.object({
     imageId: z.string(),
+    playerId: z.string(),
+    secretId: z.string(),
   }),
 });
 
