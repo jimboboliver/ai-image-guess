@@ -7,8 +7,8 @@
     "build": "next build",
     "db:push": "dotenv drizzle-kit push:mysql",
     "db:studio": "dotenv drizzle-kit studio",
-    "diff:d": "sst diff --stage dev",
-    "deploy:d": "sst deploy --stage dev",
+    "diff": "sst diff --stage dev",
+    "deploy": "sst deploy --stage dev",
     "dev": "next dev",
     "lint": "next lint && tsc --noEmit",
     "start": "next start",
@@ -70,5 +70,5 @@
   "ct3aMetadata": {
     "initVersion": "7.24.2"
   },
-  "packageManager": "pnpm@8.10.4"
+  "packageManager": "pnpm@9.0.5"
 }
