@@ -65,7 +65,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
     status: "lobby",
     gameCode: gameCode,
     ownerConnectionId: event.requestContext.connectionId,
-    gameType: "chimpin",
+    gameType: "vote",
   };
 
   // check that game doesn't exist

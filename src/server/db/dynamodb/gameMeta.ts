@@ -14,7 +14,7 @@ export const gameMetaRecordSchema = baseRecord.extend({
       timestampEndVote: z.number(),
     })
     .optional(),
-  gameType: z.string(),
+  gameType: z.enum(["vote", "guess"]),
 });
 
 export type GameMetaRecord = z.infer<typeof gameMetaRecordSchema>;

@@ -47,7 +47,6 @@ export function Game() {
   >([]);
   const [myPlayerPublicRecord, setMyPlayerPublicRecord] =
     React.useState<PlayerPublicRecord>();
-  console.log("myPlayerPublicRecord", myPlayerPublicRecord);
   const [, setMyConnectionRecord] = React.useState<ConnectionRecord>();
   const [imageRecords, setImageRecords] = React.useState<ImageRecord[]>([]);
   // find imageRecord with maximum votes in imageRecords
@@ -609,9 +608,6 @@ export function Game() {
         </div>
       </div>
     );
-    playerPublicRecords.map((connectionRecord) => (
-      <Avatar key={connectionRecord.id} name={connectionRecord.name} />
-    ));
   } else if (
     gameMetaRecord.status === "playing" &&
     (currentTime ?? 0) < (gameMetaRecord.timestamps?.timestampEndVote ?? 0)
@@ -637,9 +633,6 @@ export function Game() {
         </div>
       </div>
     );
-    playerPublicRecords.map((connectionRecord) => (
-      <Avatar key={connectionRecord.id} name={connectionRecord.name} />
-    ));
   } else if (
     gameMetaRecord.status === "playing" &&
     (currentTime ?? 0) >= (gameMetaRecord.timestamps?.timestampEndVote ?? 0)
@@ -697,9 +690,6 @@ export function Game() {
         </div>
       </div>
     );
-    playerPublicRecords.map((connectionRecord) => (
-      <Avatar key={connectionRecord.id} name={connectionRecord.name} />
-    ));
   }
 
   return (
