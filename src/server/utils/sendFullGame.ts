@@ -10,7 +10,7 @@ import { Table } from "sst/node/table";
 import type { ConnectionRecord } from "../db/dynamodb/connection";
 import type { GameMetaRecord } from "../db/dynamodb/gameMeta";
 import type { ImageRecord } from "../db/dynamodb/image";
-import type { PlayerPublicRecord } from "../db/dynamodb/player";
+import type { PlayerPublicRecord, PlayerRecord } from "../db/dynamodb/player";
 import type { FullGameMessage } from "../websocket/messageschema/server2client/fullGame";
 import { deleteConnection } from "./deleteConnection";
 
@@ -30,9 +30,21 @@ export async function sendFullGame(
     }),
   );
 
-  const gameRecords = gameDdbResponse.Items?.map((record) =>
-    unmarshall(record),
-  ) as (ConnectionRecord | GameMetaRecord | ImageRecord | PlayerPublicRecord)[];
+  const gameRecords =
+    gameDdbResponse.Items?.map((recordUnmarshalled) => {
+      const record = unmarshall(recordUnmarshalled) as
+        | ConnectionRecord
+        | GameMetaRecord
+        | ImageRecord
+        | PlayerRecord;
+
+      if ("name" in record) {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { secretId, ...playerPublicRecord } = record;
+        return playerPublicRecord as PlayerPublicRecord;
+      }
+      return record;
+    }) ?? [];
 
   try {
     console.debug("Sending message to a connection", connectionId);
