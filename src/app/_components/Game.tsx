@@ -538,158 +538,161 @@ export function Game() {
         </>
       );
     }
-  } else if (
-    gameMetaRecord.status === "playing" &&
-    (currentTime ?? 0) < (gameMetaRecord.timestamps?.timestampEndPlay ?? 0)
-  ) {
-    content = (
-      <div className="grid grid-rows-[1fr_1fr_1fr]">
-        <Collage
-          playerPublicRecords={playerPublicRecords}
-          myPlayerPublicRecord={myPlayerPublicRecord}
-          imageRecords={imageRecords}
-          myImageRecord={myImageRecord}
-        />
-        <div className="grid grid-flow-row">
-          <Countdown
-            timestampEnd={gameMetaRecord.timestamps?.timestampEndPlay ?? 0}
-          />
-          <textarea
-            className="textarea textarea-primary"
-            placeholder="Your image prompt..."
-            value={promptImage}
-            onChange={(e) => {
-              setPromptImage(e.target.value.slice(0, promptImageMaxLength));
-            }}
-            disabled={imageLoading?.loading ?? myImageRecord != null}
-          ></textarea>
-          <button
-            className="btn btn-primary btn-lg text-white"
-            onClick={() => {
-              if (playerId == null || secretId == null) {
-                console.error("playerId or secretId not set");
-                return;
+  } else if (gameMetaRecord.status === "playing") {
+    if (gameMetaRecord.gameType === "vote") {
+      if (
+        (currentTime ?? 0) < (gameMetaRecord.timestamps?.timestampEndPlay ?? 0)
+      ) {
+        content = (
+          <div className="grid grid-rows-[1fr_1fr_1fr]">
+            <Collage
+              playerPublicRecords={playerPublicRecords}
+              myPlayerPublicRecord={myPlayerPublicRecord}
+              imageRecords={imageRecords}
+              myImageRecord={myImageRecord}
+            />
+            <div className="grid grid-flow-row">
+              <Countdown
+                timestampEnd={gameMetaRecord.timestamps?.timestampEndPlay ?? 0}
+              />
+              <textarea
+                className="textarea textarea-primary"
+                placeholder="Your image prompt..."
+                value={promptImage}
+                onChange={(e) => {
+                  setPromptImage(e.target.value.slice(0, promptImageMaxLength));
+                }}
+                disabled={imageLoading?.loading ?? myImageRecord != null}
+              ></textarea>
+              <button
+                className="btn btn-primary btn-lg text-white"
+                onClick={() => {
+                  if (playerId == null || secretId == null) {
+                    console.error("playerId or secretId not set");
+                    return;
+                  }
+                  setErrorMessage(undefined);
+                  const messageId = uuid();
+                  handleMessageLoading(
+                    {
+                      loading: true,
+                      error: false,
+                      messageId,
+                    },
+                    setImageLoading,
+                    imageLoadingRef,
+                  );
+                  sendMessage({
+                    action: "makeImage",
+                    dataClient: {
+                      promptImage: promptImage.trim(),
+                      playerId,
+                      secretId,
+                    },
+                    messageId,
+                  });
+                }}
+                disabled={
+                  promptImage.length < promptImageMinLength ||
+                  (imageLoading?.loading ?? false) ||
+                  (myImageRecord != null && !myImageRecord?.error)
+                }
+              >
+                {imageLoading?.loading ? (
+                  <span className="loading loading-spinner"></span>
+                ) : myImageRecord != null && !myImageRecord?.error ? (
+                  <CheckIcon className="h-6 w-6" />
+                ) : (
+                  "Make Image"
+                )}
+              </button>
+            </div>
+          </div>
+        );
+      } else if (
+        (currentTime ?? 0) < (gameMetaRecord.timestamps?.timestampEndVote ?? 0)
+      ) {
+        content = (
+          <div className="grid grid-rows-[1fr_1fr_1fr]">
+            <SelectableCollage
+              playerPublicRecords={playerPublicRecords}
+              myPlayerPublicRecord={myPlayerPublicRecord}
+              imageRecords={imageRecords}
+              myImageRecord={myImageRecord}
+              playerId={playerId}
+              secretId={secretId}
+              sendMessage={sendMessage}
+              setErrorMessage={setErrorMessage}
+            />
+            <div className="grid grid-flow-row">
+              <Countdown
+                timestampEnd={gameMetaRecord.timestamps?.timestampEndVote ?? 0}
+              />
+              <span>Vote for the best image!</span>
+              <span>Press one</span>
+            </div>
+          </div>
+        );
+      } else if (
+        (currentTime ?? 0) >= (gameMetaRecord.timestamps?.timestampEndVote ?? 0)
+      ) {
+        content = (
+          <div className="grid grid-rows-[1fr_1fr_1fr]">
+            <WinnerCollage
+              playerPublicRecords={playerPublicRecords}
+              myPlayerPublicRecord={myPlayerPublicRecord}
+              imageRecords={imageRecords}
+              myImageRecord={myImageRecord}
+              winningImageRecord={
+                !winningImageRecord?.votes ? undefined : winningImageRecord
               }
-              setErrorMessage(undefined);
-              const messageId = uuid();
-              handleMessageLoading(
-                {
-                  loading: true,
-                  error: false,
-                  messageId,
-                },
-                setImageLoading,
-                imageLoadingRef,
-              );
-              sendMessage({
-                action: "makeImage",
-                dataClient: {
-                  promptImage: promptImage.trim(),
-                  playerId,
-                  secretId,
-                },
-                messageId,
-              });
-            }}
-            disabled={
-              promptImage.length < promptImageMinLength ||
-              (imageLoading?.loading ?? false) ||
-              (myImageRecord != null && !myImageRecord?.error)
-            }
-          >
-            {imageLoading?.loading ? (
-              <span className="loading loading-spinner"></span>
-            ) : myImageRecord != null && !myImageRecord?.error ? (
-              <CheckIcon className="h-6 w-6" />
-            ) : (
-              "Make Image"
-            )}
-          </button>
-        </div>
-      </div>
-    );
-  } else if (
-    gameMetaRecord.status === "playing" &&
-    (currentTime ?? 0) < (gameMetaRecord.timestamps?.timestampEndVote ?? 0)
-  ) {
-    content = (
-      <div className="grid grid-rows-[1fr_1fr_1fr]">
-        <SelectableCollage
-          playerPublicRecords={playerPublicRecords}
-          myPlayerPublicRecord={myPlayerPublicRecord}
-          imageRecords={imageRecords}
-          myImageRecord={myImageRecord}
-          playerId={playerId}
-          secretId={secretId}
-          sendMessage={sendMessage}
-          setErrorMessage={setErrorMessage}
-        />
-        <div className="grid grid-flow-row">
-          <Countdown
-            timestampEnd={gameMetaRecord.timestamps?.timestampEndVote ?? 0}
-          />
-          <span>Vote for the best image!</span>
-          <span>Press one</span>
-        </div>
-      </div>
-    );
-  } else if (
-    gameMetaRecord.status === "playing" &&
-    (currentTime ?? 0) >= (gameMetaRecord.timestamps?.timestampEndVote ?? 0)
-  ) {
-    content = (
-      <div className="grid grid-rows-[1fr_1fr_1fr]">
-        <WinnerCollage
-          playerPublicRecords={playerPublicRecords}
-          myPlayerPublicRecord={myPlayerPublicRecord}
-          imageRecords={imageRecords}
-          myImageRecord={myImageRecord}
-          winningImageRecord={
-            !winningImageRecord?.votes ? undefined : winningImageRecord
-          }
-          playerId={playerId}
-          secretId={secretId}
-          sendMessage={sendMessage}
-          setErrorMessage={setErrorMessage}
-        />
-        <div className="grid grid-flow-row">
-          <span>
-            {!winningImageRecord?.votes
-              ? "No-one voted :-("
-              : "We have a winner!"}
-          </span>
-          <button
-            className="btn btn-primary btn-lg text-white"
-            onClick={() => {
-              setErrorMessage(undefined);
-              const messageId = uuid();
-              handleMessageLoading(
-                {
-                  loading: true,
-                  error: false,
-                  messageId,
-                },
-                setProgressGameLoading,
-                progressGameLoadingRef,
-              );
-              sendMessage({
-                action: "progressGame",
-                dataClient: { status: "lobby" },
-                messageId,
-              });
-            }}
-            disabled={progressGameLoading?.loading ?? false}
-          >
-            {(progressGameLoading?.loading ?? false) &&
-            !progressGameLoading?.error ? (
-              <span className="loading loading-spinner"></span>
-            ) : (
-              "Back to lobby"
-            )}
-          </button>
-        </div>
-      </div>
-    );
+              playerId={playerId}
+              secretId={secretId}
+              sendMessage={sendMessage}
+              setErrorMessage={setErrorMessage}
+            />
+            <div className="grid grid-flow-row">
+              <span>
+                {!winningImageRecord?.votes
+                  ? "No-one voted :-("
+                  : "We have a winner!"}
+              </span>
+              <button
+                className="btn btn-primary btn-lg text-white"
+                onClick={() => {
+                  setErrorMessage(undefined);
+                  const messageId = uuid();
+                  handleMessageLoading(
+                    {
+                      loading: true,
+                      error: false,
+                      messageId,
+                    },
+                    setProgressGameLoading,
+                    progressGameLoadingRef,
+                  );
+                  sendMessage({
+                    action: "progressGame",
+                    dataClient: { status: "lobby" },
+                    messageId,
+                  });
+                }}
+                disabled={progressGameLoading?.loading ?? false}
+              >
+                {(progressGameLoading?.loading ?? false) &&
+                !progressGameLoading?.error ? (
+                  <span className="loading loading-spinner"></span>
+                ) : (
+                  "Back to lobby"
+                )}
+              </button>
+            </div>
+          </div>
+        );
+      }
+    } else {
+      // game type guess
+    }
   }
 
   return (
