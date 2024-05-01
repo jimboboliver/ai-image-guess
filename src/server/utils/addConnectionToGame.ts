@@ -26,10 +26,10 @@ export async function addConnectionToGame(
   try {
     playerUpdateResponse = await ddbClient.send(
       new UpdateItemCommand({
-        TableName: Table.chimpin2.tableName,
+        TableName: Table.chimpin3.tableName,
         Key: marshall({
-          game: `game#${gameId}`,
-          id: `player#${playerId}`,
+          pk: `game#${gameId}`,
+          sk: `player#${playerId}`,
         }),
         UpdateExpression: "SET #name = :name, secretId = :secretId",
         ExpressionAttributeValues: marshall({
@@ -75,14 +75,14 @@ export async function addConnectionToGame(
 
   // add the connection to the game
   const connectionRecord: ConnectionRecord = {
-    id: `connection#${connectionId}`,
-    game: `game#${gameId}`,
+    pk: `game#${gameId}`,
+    sk: `connection#${connectionId}`,
     playerId,
   };
   console.debug("Adding connection to game", connectionRecord);
   await ddbClient.send(
     new PutItemCommand({
-      TableName: Table.chimpin2.tableName,
+      TableName: Table.chimpin3.tableName,
       Item: marshall(connectionRecord),
     }),
   );

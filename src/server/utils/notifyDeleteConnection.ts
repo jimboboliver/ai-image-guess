@@ -18,10 +18,10 @@ export async function notifyDeleteConnection(
 ) {
   const existingConnectionResponse = await ddbClient.send(
     new QueryCommand({
-      TableName: Table.chimpin2.tableName,
-      KeyConditionExpression: "game = :game AND begins_with(id, :connection)",
+      TableName: Table.chimpin3.tableName,
+      KeyConditionExpression: "pk = :pk AND begins_with(sk, :connection)",
       ExpressionAttributeValues: marshall({
-        ":game": connectionRecord.game,
+        ":pk": connectionRecord.pk,
         ":connection": "connection",
       }),
     }),
@@ -29,11 +29,11 @@ export async function notifyDeleteConnection(
 
   for (const item of existingConnectionResponse.Items ?? []) {
     const existingConnectionRecord = unmarshall(item) as ConnectionRecord;
-    const connectionId = existingConnectionRecord.id.split("#")[1];
+    const connectionId = existingConnectionRecord.sk.split("#")[1];
     try {
       console.debug(
         "Sending message to a connection",
-        existingConnectionRecord.id.split("#")[1],
+        existingConnectionRecord.sk.split("#")[1],
       );
       const fullGameMessage: DeleteConnectionMessage = {
         action: "deleteConnection",

@@ -58,11 +58,11 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   // check that the player hasn't voted yet
   const connectionResponse = await ddbClient.send(
     new QueryCommand({
-      TableName: Table.chimpin2.tableName,
-      IndexName: "idIndex",
-      KeyConditionExpression: "id = :id",
+      TableName: Table.chimpin3.tableName,
+      IndexName: "skIndex",
+      KeyConditionExpression: "sk = :sk",
       ExpressionAttributeValues: marshall({
-        ":id": `connection#${event.requestContext.connectionId}`,
+        ":sk": `connection#${event.requestContext.connectionId}`,
       }),
     }),
   );
@@ -77,10 +77,10 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   ) as ConnectionRecord;
   const playerDdbResponse = await ddbClient.send(
     new GetItemCommand({
-      TableName: Table.chimpin2.tableName,
+      TableName: Table.chimpin3.tableName,
       Key: marshall({
-        game: connectionRecord.game,
-        id: `player#${message.dataClient.playerId}`,
+        pk: connectionRecord.pk,
+        sk: `player#${message.dataClient.playerId}`,
       }),
     }),
   );
@@ -105,11 +105,11 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   // get image from db
   const imageResponse = await ddbClient.send(
     new QueryCommand({
-      TableName: Table.chimpin2.tableName,
-      KeyConditionExpression: "game = :game and id = :id",
+      TableName: Table.chimpin3.tableName,
+      KeyConditionExpression: "pk = :pk and sk = :sk",
       ExpressionAttributeValues: marshall({
-        ":game": connectionRecord.game,
-        ":id": `image#${message.dataClient.imageId}`,
+        ":pk": connectionRecord.pk,
+        ":sk": `image#${message.dataClient.imageId}`,
       }),
     }),
   );
@@ -124,10 +124,10 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   try {
     await ddbClient.send(
       new UpdateItemCommand({
-        TableName: Table.chimpin2.tableName,
+        TableName: Table.chimpin3.tableName,
         Key: marshall({
-          game: connectionRecord.game,
-          id: `player#${message.dataClient.playerId}`,
+          pk: connectionRecord.pk,
+          sk: `player#${message.dataClient.playerId}`,
         }),
         UpdateExpression: "SET votedImageId = :votedImageId",
         ExpressionAttributeValues: marshall({
@@ -163,10 +163,10 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   // TODO handle race to update vote count
   await ddbClient.send(
     new UpdateItemCommand({
-      TableName: Table.chimpin2.tableName,
+      TableName: Table.chimpin3.tableName,
       Key: marshall({
-        game: connectionRecord.game,
-        id: `image#${message.dataClient.imageId}`,
+        pk: connectionRecord.pk,
+        sk: `image#${message.dataClient.imageId}`,
       }),
       UpdateExpression: "SET #votes = :votes",
       ExpressionAttributeNames: {
@@ -183,7 +183,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
 
   // send vote to all connections
   await sendMessageToAllGameConnections(
-    connectionRecord.game.split("#")[1]!,
+    connectionRecord.pk.split("#")[1]!,
     {
       dataServer: { imageRecord, playerPublicRecord },
       action: "voted",

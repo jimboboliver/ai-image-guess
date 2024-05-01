@@ -63,7 +63,7 @@ export function Game() {
   const myImageRecord =
     myPlayerPublicRecord != null
       ? imageRecords.filter(
-          (x) => x.playerId === myPlayerPublicRecord?.id.split("#")[1],
+          (x) => x.playerId === myPlayerPublicRecord?.sk.split("#")[1],
         )[0]
       : undefined;
   const gameMetaLoadingRef = React.useRef<MessageLoading>();
@@ -224,7 +224,7 @@ export function Game() {
           });
         } else if (message.action === "deleteConnection") {
           setConnectionRecords((prev) =>
-            prev.filter((x) => x.id !== message.dataServer.id),
+            prev.filter((x) => x.sk !== message.dataServer.sk),
           );
         } else if (message.action === "progressedGame") {
           setGameMetaRecord(message.dataServer);
@@ -516,7 +516,7 @@ export function Game() {
           </button>
           <div className="flex gap-3">
             {playerPublicRecords.map((connectionRecord) => (
-              <Avatar key={connectionRecord.id} name={connectionRecord.name} />
+              <Avatar key={connectionRecord.sk} name={connectionRecord.name} />
             ))}
           </div>
         </>
@@ -532,7 +532,7 @@ export function Game() {
           </h1>
           <div className="flex gap-3">
             {playerPublicRecords.map((connectionRecord) => (
-              <Avatar key={connectionRecord.id} name={connectionRecord.name} />
+              <Avatar key={connectionRecord.sk} name={connectionRecord.name} />
             ))}
           </div>
         </>
@@ -740,36 +740,36 @@ function Collage({
         {playerPublicRecords
           .filter(
             (playerPublicRecord) =>
-              myPlayerPublicRecord?.id !== playerPublicRecord.id,
+              myPlayerPublicRecord?.sk !== playerPublicRecord.sk,
           )
           .map((playerPublicRecord) => {
             const imageRecord = imageRecords.filter(
               (imageRecord) =>
-                imageRecord.playerId === playerPublicRecord.id.split("#")[1],
+                imageRecord.playerId === playerPublicRecord.sk.split("#")[1],
             )[0];
             return imageRecord?.url ? (
               <Image
                 src={imageRecord.url}
                 alt={`${playerPublicRecord.name}'s image`}
-                key={playerPublicRecord.id}
+                key={playerPublicRecord.sk}
                 width={128}
                 height={128}
               />
             ) : imageRecord?.loading ? (
               <div
-                key={playerPublicRecord.id}
+                key={playerPublicRecord.sk}
                 className="skeleton w-32 h-32"
               ></div>
             ) : imageRecord?.error ? (
               <div
-                key={playerPublicRecord.id}
+                key={playerPublicRecord.sk}
                 className="bg-gray-200 w-32 h-32"
               >
                 Try again!
               </div>
             ) : (
               <span
-                key={playerPublicRecord.id}
+                key={playerPublicRecord.sk}
                 className="bg-gray-200 w-32 h-32"
               >
                 {playerPublicRecord.name}'s image
@@ -820,18 +820,18 @@ function SelectableCollage({
         {playerPublicRecords
           .filter(
             (playerPublicRecord) =>
-              myPlayerPublicRecord?.id !== playerPublicRecord.id,
+              myPlayerPublicRecord?.sk !== playerPublicRecord.sk,
           )
           .map((playerPublicRecord) => {
             const imageRecord = imageRecords.filter(
               (imageRecord) =>
-                imageRecord.playerId === playerPublicRecord.id.split("#")[1],
+                imageRecord.playerId === playerPublicRecord.sk.split("#")[1],
             )[0];
             const isSelected =
               myPlayerPublicRecord?.votedImageId ===
-              imageRecord?.id.split("#")[1];
+              imageRecord?.sk.split("#")[1];
             return imageRecord?.url ? (
-              <div className="relative" key={playerPublicRecord.id}>
+              <div className="relative" key={playerPublicRecord.sk}>
                 <Image
                   src={imageRecord.url}
                   alt={`${playerPublicRecord.name}'s image`}
@@ -843,7 +843,7 @@ function SelectableCollage({
                       console.error("playerId or secretId not set");
                       return;
                     }
-                    const imageId = imageRecord?.id.split("#")[1];
+                    const imageId = imageRecord?.sk.split("#")[1];
                     if (imageId != null) {
                       setErrorMessage(undefined);
                       sendMessage({
@@ -874,19 +874,19 @@ function SelectableCollage({
               </div>
             ) : imageRecord?.loading ? (
               <div
-                key={playerPublicRecord.id}
+                key={playerPublicRecord.sk}
                 className="skeleton w-32 h-32"
               ></div>
             ) : imageRecord?.error ? (
               <div
-                key={playerPublicRecord.id}
+                key={playerPublicRecord.sk}
                 className="bg-gray-200 w-32 h-32"
               >
                 Try again!
               </div>
             ) : (
               <span
-                key={playerPublicRecord.id}
+                key={playerPublicRecord.sk}
                 className="bg-gray-200 w-32 h-32"
               >
                 No image generated :-(
@@ -906,7 +906,7 @@ function SelectableCollage({
                 console.error("playerId or secretId not set");
                 return;
               }
-              const imageId = myImageRecord?.id.split("#")[1];
+              const imageId = myImageRecord?.sk.split("#")[1];
               if (imageId != null) {
                 setErrorMessage(undefined);
                 sendMessage({
@@ -916,10 +916,10 @@ function SelectableCollage({
                 });
               }
             }}
-            className={`border-2 cursor-pointer ${myPlayerPublicRecord?.votedImageId === myImageRecord.id.split("#")[1] ? "border-green-500" : "border-transparent"}`}
+            className={`border-2 cursor-pointer ${myPlayerPublicRecord?.votedImageId === myImageRecord.sk.split("#")[1] ? "border-green-500" : "border-transparent"}`}
           />
           {myPlayerPublicRecord?.votedImageId ===
-            myImageRecord.id.split("#")[1] && (
+            myImageRecord.sk.split("#")[1] && (
             <div className="absolute top-2 right-2 w-6 h-6 bg-green-500 flex justify-center items-center">
               {/* SVG for the tick mark or use an icon library like FontAwesome */}
               <svg
@@ -975,16 +975,16 @@ function WinnerCollage({
         {playerPublicRecords
           .filter(
             (playerPublicRecord) =>
-              myPlayerPublicRecord?.id !== playerPublicRecord.id,
+              myPlayerPublicRecord?.sk !== playerPublicRecord.sk,
           )
           .map((playerPublicRecord) => {
             const imageRecord = imageRecords.filter(
               (imageRecord) =>
-                imageRecord.playerId === playerPublicRecord.id.split("#")[1],
+                imageRecord.playerId === playerPublicRecord.sk.split("#")[1],
             )[0];
-            const isWinning = winningImageRecord?.id === imageRecord?.id;
+            const isWinning = winningImageRecord?.sk === imageRecord?.sk;
             return imageRecord?.url ? (
-              <div className="relative" key={playerPublicRecord.id}>
+              <div className="relative" key={playerPublicRecord.sk}>
                 <Image
                   src={imageRecord.url}
                   alt={`${playerPublicRecord.name}'s image`}
@@ -996,7 +996,7 @@ function WinnerCollage({
                       console.error("playerId or secretId not set");
                       return;
                     }
-                    const imageId = imageRecord?.id.split("#")[1];
+                    const imageId = imageRecord?.sk.split("#")[1];
                     if (imageId != null) {
                       setErrorMessage(undefined);
                       sendMessage({
@@ -1013,19 +1013,19 @@ function WinnerCollage({
               </div>
             ) : imageRecord?.loading ? (
               <div
-                key={playerPublicRecord.id}
+                key={playerPublicRecord.sk}
                 className="skeleton w-32 h-32"
               ></div>
             ) : imageRecord?.error ? (
               <div
-                key={playerPublicRecord.id}
+                key={playerPublicRecord.sk}
                 className="bg-gray-200 w-32 h-32"
               >
                 Try again!
               </div>
             ) : (
               <span
-                key={playerPublicRecord.id}
+                key={playerPublicRecord.sk}
                 className="bg-gray-200 w-32 h-32"
               >
                 No image generated :-(
@@ -1040,9 +1040,9 @@ function WinnerCollage({
             alt="your image"
             width={256}
             height={256}
-            className={`border-2 ${winningImageRecord?.id === myImageRecord.id ? "border-yellow-500" : "border-transparent"}`}
+            className={`border-2 ${winningImageRecord?.sk === myImageRecord.sk ? "border-yellow-500" : "border-transparent"}`}
           />
-          {winningImageRecord?.id === myImageRecord.id && (
+          {winningImageRecord?.sk === myImageRecord.sk && (
             <StarIcon className="absolute top-2 right-2 h-6 w-6 text-yellow-500" />
           )}
         </div>

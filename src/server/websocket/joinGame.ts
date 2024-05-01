@@ -46,10 +46,10 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
 
   const gameMetaDdbResponse = await ddbClient.send(
     new GetItemCommand({
-      TableName: Table.chimpin2.tableName,
+      TableName: Table.chimpin3.tableName,
       Key: marshall({
-        game: `game#${message.dataClient.gameCode}`,
-        id: "meta",
+        pk: `game#${message.dataClient.gameCode}`,
+        sk: "meta",
       }),
     }),
   );

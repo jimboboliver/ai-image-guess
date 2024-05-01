@@ -13,11 +13,11 @@ export async function deleteConnection(connectionId: string) {
   const ddbClient = new DynamoDB();
   const connectionDdbResponse = await ddbClient.send(
     new QueryCommand({
-      TableName: Table.chimpin2.tableName,
-      IndexName: "idIndex",
-      KeyConditionExpression: "id = :id",
+      TableName: Table.chimpin3.tableName,
+      IndexName: "skIndex",
+      KeyConditionExpression: "sk = :sk",
       ExpressionAttributeValues: marshall({
-        ":id": `connection#${connectionId}`,
+        ":sk": `connection#${connectionId}`,
       }),
     }),
   );
@@ -26,10 +26,10 @@ export async function deleteConnection(connectionId: string) {
   ) {
     await ddbClient.send(
       new DeleteItemCommand({
-        TableName: Table.chimpin2.tableName,
+        TableName: Table.chimpin3.tableName,
         Key: {
-          game: connectionRecord.game!,
-          id: connectionRecord.id!,
+          pk: connectionRecord.pk!,
+          sk: connectionRecord.sk!,
         },
       }),
     );

@@ -60,8 +60,8 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   // generate game code and create game
   const gameCode = generateRandomCode();
   const gameMetaRecord: GameMetaRecord = {
-    game: `game#${gameCode}`,
-    id: "meta",
+    pk: `game#${gameCode}`,
+    sk: "meta",
     status: "lobby",
     gameCode: gameCode,
     ownerConnectionId: event.requestContext.connectionId,
@@ -71,10 +71,10 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   // check that game doesn't exist
   const gameMetaDdbResponse = await ddbClient.send(
     new GetItemCommand({
-      TableName: Table.chimpin2.tableName,
+      TableName: Table.chimpin3.tableName,
       Key: marshall({
-        game: `game#${gameCode}`,
-        id: "meta",
+        pk: `game#${gameCode}`,
+        sk: "meta",
       }),
     }),
   );
@@ -86,7 +86,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   console.debug("Creating game", gameMetaRecord);
   await ddbClient.send(
     new PutItemCommand({
-      TableName: Table.chimpin2.tableName,
+      TableName: Table.chimpin3.tableName,
       Item: marshall(gameMetaRecord),
     }),
   );

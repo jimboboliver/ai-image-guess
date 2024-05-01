@@ -115,11 +115,11 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   // get connection from db
   const connectionResponse = await ddbClient.send(
     new QueryCommand({
-      TableName: Table.chimpin2.tableName,
-      IndexName: "idIndex",
-      KeyConditionExpression: "id = :id",
+      TableName: Table.chimpin3.tableName,
+      IndexName: "skIndex",
+      KeyConditionExpression: "sk = :sk",
       ExpressionAttributeValues: marshall({
-        ":id": `connection#${event.requestContext.connectionId}`,
+        ":sk": `connection#${event.requestContext.connectionId}`,
       }),
     }),
   );
@@ -134,10 +134,10 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   ) as ConnectionRecord;
   const playerDdbResponse = await ddbClient.send(
     new GetItemCommand({
-      TableName: Table.chimpin2.tableName,
+      TableName: Table.chimpin3.tableName,
       Key: marshall({
-        game: connectionRecord.game,
-        id: `player#${message.dataClient.playerId}`,
+        pk: connectionRecord.pk,
+        sk: `player#${message.dataClient.playerId}`,
       }),
     }),
   );
@@ -151,15 +151,15 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
 
   // put image record into db while it's loading
   const imageRecord: ImageRecord = {
-    game: connectionRecord.game,
-    id: `image#${uuidv4()}`,
+    pk: connectionRecord.pk,
+    sk: `image#${uuidv4()}`,
     playerId: message.dataClient.playerId,
     promptImage: message.dataClient.promptImage,
     loading: true,
   };
   await ddbClient.send(
     new PutItemCommand({
-      TableName: Table.chimpin2.tableName,
+      TableName: Table.chimpin3.tableName,
       Item: marshall(imageRecord),
     }),
   );
@@ -171,7 +171,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { secretId, ...playerPublicRecord } = playerRecord;
   await sendMessageToAllGameConnections(
-    connectionRecord.game.split("#")[1]!,
+    connectionRecord.pk.split("#")[1]!,
     { dataServer: { imageRecord, playerPublicRecord }, action: "imageLoading" },
     ddbClient,
     apiClient,
@@ -195,12 +195,12 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
     imageRecord.error = true;
     await ddbClient.send(
       new PutItemCommand({
-        TableName: Table.chimpin2.tableName,
+        TableName: Table.chimpin3.tableName,
         Item: marshall(imageRecord),
       }),
     );
     await sendMessageToAllGameConnections(
-      connectionRecord.game.split("#")[1]!,
+      connectionRecord.pk.split("#")[1]!,
       {
         dataServer: { imageRecord, playerPublicRecord },
         action: "imageError",
@@ -226,12 +226,12 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   imageRecord.loading = false;
   await ddbClient.send(
     new PutItemCommand({
-      TableName: Table.chimpin2.tableName,
+      TableName: Table.chimpin3.tableName,
       Item: marshall(imageRecord),
     }),
   );
   await sendMessageToAllGameConnections(
-    connectionRecord.game.split("#")[1]!,
+    connectionRecord.pk.split("#")[1]!,
     {
       dataServer: { imageRecord, playerPublicRecord },
       action: "imageGenerated",

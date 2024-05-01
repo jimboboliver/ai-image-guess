@@ -22,10 +22,10 @@ export async function sendMessageToAllGameConnections(
 ) {
   const connectionDdbResponse = await ddbClient.send(
     new QueryCommand({
-      TableName: Table.chimpin2.tableName,
-      KeyConditionExpression: "game = :game and begins_with(id, :idPrefix)",
+      TableName: Table.chimpin3.tableName,
+      KeyConditionExpression: "pk = :pk and begins_with(sk, :idPrefix)",
       ExpressionAttributeValues: marshall({
-        ":game": `game#${gameId}`,
+        ":pk": `game#${gameId}`,
         ":idPrefix": "connection#",
       }),
     }),
@@ -34,7 +34,7 @@ export async function sendMessageToAllGameConnections(
   const sendToConnection = async function (
     connectionDdbRecord: Record<string, AttributeValue>,
   ) {
-    const connectionId = connectionDdbRecord.id?.S?.split("#")[1];
+    const connectionId = connectionDdbRecord.sk?.S?.split("#")[1];
     try {
       console.debug("Sending message to a connection", connectionId);
       await apiClient.send(

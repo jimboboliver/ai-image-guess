@@ -22,10 +22,10 @@ export async function sendFullGame(
 ) {
   const gameDdbResponse = await ddbClient.send(
     new QueryCommand({
-      TableName: Table.chimpin2.tableName,
-      KeyConditionExpression: "game = :game",
+      TableName: Table.chimpin3.tableName,
+      KeyConditionExpression: "pk = :pk",
       ExpressionAttributeValues: marshall({
-        ":game": `game#${gameId}`,
+        ":pk": `game#${gameId}`,
       }),
     }),
   );

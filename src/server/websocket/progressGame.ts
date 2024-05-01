@@ -51,11 +51,11 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   // get connection from db
   const connectionResponse = await ddbClient.send(
     new QueryCommand({
-      TableName: Table.chimpin2.tableName,
-      IndexName: "idIndex",
-      KeyConditionExpression: "id = :id",
+      TableName: Table.chimpin3.tableName,
+      IndexName: "skIndex",
+      KeyConditionExpression: "sk = :sk",
       ExpressionAttributeValues: marshall({
-        ":id": `connection#${event.requestContext.connectionId}`,
+        ":sk": `connection#${event.requestContext.connectionId}`,
       }),
     }),
   );
@@ -73,10 +73,10 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   const gameDdbRecord = (
     await ddbClient.send(
       new GetItemCommand({
-        TableName: Table.chimpin2.tableName,
+        TableName: Table.chimpin3.tableName,
         Key: marshall({
-          game: connectionRecord.game,
-          id: "meta",
+          pk: connectionRecord.pk,
+          sk: "meta",
         }),
       }),
     )
@@ -104,10 +104,10 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   }
   await ddbClient.send(
     new UpdateItemCommand({
-      TableName: Table.chimpin2.tableName,
+      TableName: Table.chimpin3.tableName,
       Key: marshall({
-        game: connectionRecord.game,
-        id: "meta",
+        pk: connectionRecord.pk,
+        sk: "meta",
       }),
       UpdateExpression: updateExpression,
       ExpressionAttributeNames: expressionAttributeNames,
@@ -123,7 +123,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
 
   // send message to all connections
   await sendMessageToAllGameConnections(
-    connectionRecord.game.split("#")[1]!,
+    connectionRecord.pk.split("#")[1]!,
     { dataServer: gameRecord, action: "progressedGame" },
     ddbClient,
     apiClient,
