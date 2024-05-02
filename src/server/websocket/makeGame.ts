@@ -9,6 +9,8 @@ import type { APIGatewayProxyWebsocketHandlerV2 } from "aws-lambda";
 import { Table } from "sst/node/table";
 
 import type { GameMetaRecord } from "../db/dynamodb/gameMeta";
+import type { HandGuessRecord } from "../db/dynamodb/handGuess";
+import type { HandVoteRecord } from "../db/dynamodb/handVote";
 import { addConnectionToGame } from "../utils/addConnectionToGame";
 import { sendFullGame } from "../utils/sendFullGame";
 import {
@@ -109,6 +111,32 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   const connectionRecord = addConnectionToGameResponse.connectionRecord;
   const playerRecord = addConnectionToGameResponse.playerRecord;
 
+  const pk = `game#${gameCode}`;
+  const sk = `hand#${message.dataClient.playerId}`;
+  let handRecord: HandGuessRecord | HandVoteRecord;
+  if (gameMetaRecord.gameType === "guess") {
+    handRecord = {
+      pk,
+      sk,
+      playerId: playerRecord.sk.split("#")[1]!,
+      words: [],
+    };
+  } else {
+    handRecord = {
+      pk,
+      sk,
+      playerId: playerRecord.sk.split("#")[1]!,
+    };
+  }
+  // add hand to database
+  console.debug("Creating hand", handRecord);
+  await ddbClient.send(
+    new PutItemCommand({
+      TableName: Table.chimpin3.tableName,
+      Item: marshall(handRecord),
+    }),
+  );
+
   // send full game to new connection
   await sendFullGame(
     event.requestContext.connectionId,
@@ -119,10 +147,9 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { secretId, ...playerPublicRecord } = playerRecord;
-
   const response: MakeGameResponse = {
     ...message,
-    dataServer: { connectionRecord, playerPublicRecord },
+    dataServer: { connectionRecord, playerPublicRecord, handRecord },
     serverStatus: "success",
   };
   return {

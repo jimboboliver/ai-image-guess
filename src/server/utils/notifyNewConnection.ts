@@ -8,6 +8,8 @@ import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import { Table } from "sst/node/table";
 
 import type { ConnectionRecord } from "../db/dynamodb/connection";
+import type { HandGuessPublicRecord } from "../db/dynamodb/handGuess";
+import type { HandVoteRecord } from "../db/dynamodb/handVote";
 import type { PlayerPublicRecord } from "../db/dynamodb/player";
 import type { NewPlayerMessage } from "../websocket/messageschema/server2client/newPlayer";
 import { deleteConnection } from "./deleteConnection";
@@ -15,6 +17,7 @@ import { deleteConnection } from "./deleteConnection";
 export async function notifyNewConnection(
   connectionRecord: ConnectionRecord,
   playerPublicRecord: PlayerPublicRecord,
+  handPublicRecord: HandVoteRecord | HandGuessPublicRecord,
   ddbClient: DynamoDB,
   apiClient: ApiGatewayManagementApiClient,
 ) {
@@ -36,7 +39,7 @@ export async function notifyNewConnection(
       console.debug("Sending message to a connection", connectionId);
       const fullGameMessage: NewPlayerMessage = {
         action: "newPlayer",
-        dataServer: { connectionRecord, playerPublicRecord },
+        dataServer: { connectionRecord, playerPublicRecord, handPublicRecord },
       };
       await apiClient.send(
         new PostToConnectionCommand({

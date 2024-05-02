@@ -1,9 +1,19 @@
 import { ApiGatewayManagementApiClient } from "@aws-sdk/client-apigatewaymanagementapi";
-import { DynamoDB, GetItemCommand } from "@aws-sdk/client-dynamodb";
-import { marshall } from "@aws-sdk/util-dynamodb";
+import {
+  DynamoDB,
+  GetItemCommand,
+  PutItemCommand,
+} from "@aws-sdk/client-dynamodb";
+import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import type { APIGatewayProxyWebsocketHandlerV2 } from "aws-lambda";
 import { Table } from "sst/node/table";
 
+import type { GameMetaRecord } from "../db/dynamodb/gameMeta";
+import type {
+  HandGuessPublicRecord,
+  HandGuessRecord,
+} from "../db/dynamodb/handGuess";
+import type { HandVoteRecord } from "../db/dynamodb/handVote";
 import { addConnectionToGame } from "../utils/addConnectionToGame";
 import { notifyDeleteConnection } from "../utils/notifyDeleteConnection";
 import { notifyNewConnection } from "../utils/notifyNewConnection";
@@ -64,6 +74,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
       body: JSON.stringify(response),
     };
   }
+  const gameMetaRecord = unmarshall(gameMetaDdbResponse.Item) as GameMetaRecord;
 
   const { connectionRecord, playerRecord, deletedConnectionRecords } =
     await addConnectionToGame(
@@ -86,10 +97,42 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
     await notifyDeleteConnection(deletedConnectionRecord, ddbClient, apiClient);
   }
 
+  const pk = `game#${message.dataClient.gameCode}`;
+  const sk = `hand#${message.dataClient.playerId}`;
+  let handRecord: HandGuessRecord | HandVoteRecord;
+  let handPublicRecord: HandGuessPublicRecord | HandVoteRecord;
+  if (gameMetaRecord.gameType === "guess") {
+    handRecord = {
+      pk,
+      sk,
+      playerId: playerRecord.sk.split("#")[1]!,
+      words: [],
+    };
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { words, ...temp } = handRecord;
+    handPublicRecord = temp;
+  } else {
+    handRecord = {
+      pk,
+      sk,
+      playerId: playerRecord.sk.split("#")[1]!,
+    };
+    handPublicRecord = handRecord;
+  }
+  // add hand to database
+  console.debug("Creating hand", handRecord);
+  await ddbClient.send(
+    new PutItemCommand({
+      TableName: Table.chimpin3.tableName,
+      Item: marshall(handRecord),
+    }),
+  );
+
   // notify other connections of new connection
   await notifyNewConnection(
     connectionRecord,
     playerRecord,
+    handPublicRecord,
     ddbClient,
     apiClient,
   );
@@ -104,12 +147,12 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { secretId, ...playerPublicRecord } = playerRecord;
-
   const response: JoinGameResponse = {
     ...message,
     dataServer: {
       connectionRecord,
       playerPublicRecord,
+      handRecord,
     },
     serverStatus: "success",
   };

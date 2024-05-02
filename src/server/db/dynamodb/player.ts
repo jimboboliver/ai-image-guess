@@ -8,8 +8,7 @@ export const nameMaxLength = 10;
 export const playerRecordSchema = baseRecord.extend({
   secretId: z.string(), // for auth
   name: z.string().min(nameMinLength).max(nameMaxLength),
-  imageId: z.string().optional(),
-  votedImageId: z.string().optional(),
+  handId: z.string(),
 });
 
 export type PlayerRecord = z.infer<typeof playerRecordSchema>;

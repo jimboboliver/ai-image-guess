@@ -7,6 +7,8 @@ import {
   gameCodeLength,
   type GameMetaRecord,
 } from "~/server/db/dynamodb/gameMeta";
+import type { HandGuessPublicRecord } from "~/server/db/dynamodb/handGuess";
+import type { HandVoteRecord } from "~/server/db/dynamodb/handVote";
 import {
   promptImageMaxLength,
   promptImageMinLength,
@@ -47,6 +49,12 @@ export function Game() {
   >([]);
   const [myPlayerPublicRecord, setMyPlayerPublicRecord] =
     React.useState<PlayerPublicRecord>();
+  const [, setHandRecords] = React.useState<
+    (HandGuessPublicRecord | HandVoteRecord)[]
+  >([]);
+  const [myHandRecord, setMyHandRecord] = React.useState<
+    HandGuessPublicRecord | HandVoteRecord
+  >();
   const [, setMyConnectionRecord] = React.useState<ConnectionRecord>();
   const [imageRecords, setImageRecords] = React.useState<ImageRecord[]>([]);
   // find imageRecord with maximum votes in imageRecords
@@ -193,6 +201,7 @@ export function Game() {
         } else if (message.action === "fullGame") {
           const newImageRecords: ImageRecord[] = [];
           const newPlayerRecords: PlayerPublicRecord[] = [];
+          const newHandRecords: (HandGuessPublicRecord | HandVoteRecord)[] = [];
           message.dataServer.forEach((row) => {
             if ("url" in row) {
               newImageRecords.push(row);
@@ -200,10 +209,13 @@ export function Game() {
               newPlayerRecords.push(row);
             } else if ("status" in row) {
               setGameMetaRecord(row);
+            } else if ("imageId" in row) {
+              newHandRecords.push(row);
             }
           });
           setPlayerPublicRecords(newPlayerRecords);
           setImageRecords(newImageRecords);
+          setHandRecords(newHandRecords);
         } else if (
           message.action === "imageLoading" ||
           message.action === "imageError" ||
@@ -245,6 +257,7 @@ export function Game() {
           }
         } else if (message.action === "joinGame") {
           setMyPlayerPublicRecord(message.dataServer?.playerPublicRecord);
+          setMyHandRecord(message.dataServer?.handRecord);
           setMyConnectionRecord(message.dataServer?.connectionRecord);
           if (gameJoinLoadingRef.current?.messageId === message.messageId) {
             handleMessageLoading(
@@ -259,6 +272,7 @@ export function Game() {
           }
         } else if (message.action === "makeGame") {
           setMyPlayerPublicRecord(message.dataServer?.playerPublicRecord);
+          setMyHandRecord(message.dataServer?.handRecord);
           setMyConnectionRecord(message.dataServer?.connectionRecord);
           if (gameMetaLoadingRef.current?.messageId === message.messageId) {
             handleMessageLoading(
@@ -617,6 +631,7 @@ export function Game() {
             <SelectableCollage
               playerPublicRecords={playerPublicRecords}
               myPlayerPublicRecord={myPlayerPublicRecord}
+              myHandRecord={myHandRecord}
               imageRecords={imageRecords}
               myImageRecord={myImageRecord}
               playerId={playerId}
@@ -798,6 +813,7 @@ function Collage({
 function SelectableCollage({
   playerPublicRecords,
   myPlayerPublicRecord,
+  myHandRecord,
   imageRecords,
   myImageRecord,
   playerId,
@@ -806,7 +822,8 @@ function SelectableCollage({
   setErrorMessage,
 }: {
   playerPublicRecords: PlayerPublicRecord[];
-  myPlayerPublicRecord?: PlayerPublicRecord;
+  myPlayerPublicRecord: PlayerPublicRecord | undefined;
+  myHandRecord: HandVoteRecord | undefined;
   imageRecords: ImageRecord[];
   myImageRecord: ImageRecord | undefined;
   playerId: string | undefined;
@@ -828,8 +845,7 @@ function SelectableCollage({
                 imageRecord.playerId === playerPublicRecord.sk.split("#")[1],
             )[0];
             const isSelected =
-              myPlayerPublicRecord?.votedImageId ===
-              imageRecord?.sk.split("#")[1];
+              myHandRecord?.votedImageId === imageRecord?.sk.split("#")[1];
             return imageRecord?.url ? (
               <div className="relative" key={playerPublicRecord.sk}>
                 <Image
@@ -916,10 +932,9 @@ function SelectableCollage({
                 });
               }
             }}
-            className={`border-2 cursor-pointer ${myPlayerPublicRecord?.votedImageId === myImageRecord.sk.split("#")[1] ? "border-green-500" : "border-transparent"}`}
+            className={`border-2 cursor-pointer ${myHandRecord?.votedImageId === myImageRecord.sk.split("#")[1] ? "border-green-500" : "border-transparent"}`}
           />
-          {myPlayerPublicRecord?.votedImageId ===
-            myImageRecord.sk.split("#")[1] && (
+          {myHandRecord?.votedImageId === myImageRecord.sk.split("#")[1] && (
             <div className="absolute top-2 right-2 w-6 h-6 bg-green-500 flex justify-center items-center">
               {/* SVG for the tick mark or use an icon library like FontAwesome */}
               <svg
