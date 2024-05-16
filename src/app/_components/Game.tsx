@@ -298,8 +298,8 @@ export function Game() {
             );
           }
         } else if (message.action === "voted") {
-          setPlayerPublicRecords((prev) => {
-            return uniqueObjArray(prev, message.dataServer.playerPublicRecord);
+          setImageRecords((prev) => {
+            return uniqueObjArray(prev, message.dataServer.imageRecord);
           });
           setImageRecords((prev) => {
             return uniqueObjArray(prev, message.dataServer.imageRecord);

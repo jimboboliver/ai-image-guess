@@ -10,6 +10,7 @@ import type { APIGatewayProxyWebsocketHandlerV2 } from "aws-lambda";
 import { Table } from "sst/node/table";
 
 import type { ConnectionRecord } from "../db/dynamodb/connection";
+import type { HandVoteRecord } from "../db/dynamodb/handVote";
 import type { ImageRecord } from "../db/dynamodb/image";
 import type { PlayerRecord } from "../db/dynamodb/player";
 import { sendMessageToAllGameConnections } from "../utils/sendMessageToAllGameConnections";
@@ -91,7 +92,21 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   if (playerRecord.secretId !== message.dataClient.secretId) {
     throw new Error("Incorrect secret");
   }
-  if (playerRecord.votedImageId) {
+  // get player's hand
+  const handDdbResponse = await ddbClient.send(
+    new GetItemCommand({
+      TableName: Table.chimpin3.tableName,
+      Key: marshall({
+        pk: connectionRecord.pk,
+        sk: `hand#${playerRecord.handId}`,
+      }),
+    }),
+  );
+  if (handDdbResponse.Item == null) {
+    throw new Error("No hand found for player");
+  }
+  const handRecord = unmarshall(handDdbResponse.Item) as HandVoteRecord;
+  if (handRecord.votedImageId) {
     const response: VoteResponse = {
       ...message,
       serverStatus: "bad request",
@@ -119,15 +134,15 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
 
   const imageRecord = unmarshall(imageResponse.Items[0]!) as ImageRecord;
 
-  // update the player record with the votedImageId
-  playerRecord.votedImageId = message.dataClient.imageId;
+  // update the hand record with the votedImageId
+  handRecord.votedImageId = message.dataClient.imageId;
   try {
     await ddbClient.send(
       new UpdateItemCommand({
         TableName: Table.chimpin3.tableName,
         Key: marshall({
-          pk: connectionRecord.pk,
-          sk: `player#${message.dataClient.playerId}`,
+          pk: handRecord.pk,
+          sk: handRecord.sk,
         }),
         UpdateExpression: "SET votedImageId = :votedImageId",
         ExpressionAttributeValues: marshall({
@@ -185,7 +200,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   await sendMessageToAllGameConnections(
     connectionRecord.pk.split("#")[1]!,
     {
-      dataServer: { imageRecord, playerPublicRecord },
+      dataServer: { imageRecord, handRecord },
       action: "voted",
     },
     ddbClient,

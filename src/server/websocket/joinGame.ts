@@ -8,13 +8,15 @@ import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import type { APIGatewayProxyWebsocketHandlerV2 } from "aws-lambda";
 import { Table } from "sst/node/table";
 
+import type { ConnectionRecord } from "../db/dynamodb/connection";
 import type { GameMetaRecord } from "../db/dynamodb/gameMeta";
 import type {
   HandGuessPublicRecord,
   HandGuessRecord,
 } from "../db/dynamodb/handGuess";
 import type { HandVoteRecord } from "../db/dynamodb/handVote";
-import { addConnectionToGame } from "../utils/addConnectionToGame";
+import type { PlayerRecord } from "../db/dynamodb/player";
+import { deleteConnection } from "../utils/deleteConnection";
 import { notifyDeleteConnection } from "../utils/notifyDeleteConnection";
 import { notifyNewConnection } from "../utils/notifyNewConnection";
 import { sendFullGame } from "../utils/sendFullGame";
@@ -76,15 +78,92 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   }
   const gameMetaRecord = unmarshall(gameMetaDdbResponse.Item) as GameMetaRecord;
 
-  const { connectionRecord, playerRecord, deletedConnectionRecords } =
-    await addConnectionToGame(
-      event.requestContext.connectionId,
-      message.dataClient.gameCode,
-      message.dataClient.name,
-      message.dataClient.playerId,
-      message.dataClient.secretId,
-      ddbClient,
+  // check that connection isn't in another game TODO notify other game
+  const deletedConnectionRecords = await deleteConnection(
+    event.requestContext.connectionId,
+  );
+
+  // add/update the player record with the name
+  const playerGetResponse = await ddbClient.send(
+    new GetItemCommand({
+      TableName: Table.chimpin3.tableName,
+      Key: marshall({
+        pk: `game#${message.dataClient.gameCode}`,
+        sk: `player#${message.dataClient.playerId}`,
+      }),
+    }),
+  );
+  let playerRecord: PlayerRecord;
+  let handRecord: HandGuessRecord | HandVoteRecord;
+  let handPublicRecord: HandGuessPublicRecord | HandVoteRecord;
+  if (playerGetResponse.Item == null) {
+    const pk = `game#${message.dataClient.gameCode}`;
+    const skHand = `hand#${message.dataClient.playerId}`;
+    if (gameMetaRecord.gameType === "guess") {
+      handRecord = {
+        pk,
+        sk: skHand,
+        playerId: message.dataClient.playerId,
+        words: [],
+      };
+    } else {
+      handRecord = {
+        pk,
+        sk: skHand,
+        playerId: message.dataClient.playerId,
+      };
+    }
+    // make a new player
+    playerRecord = {
+      pk: `game#${message.dataClient.gameCode}`,
+      sk: `player#${message.dataClient.playerId}`,
+      name: message.dataClient.name,
+      secretId: message.dataClient.secretId,
+      handId: skHand,
+    };
+    // insert it
+    console.debug("Creating player", playerRecord);
+    await ddbClient.send(
+      new PutItemCommand({
+        TableName: Table.chimpin3.tableName,
+        Item: marshall(playerRecord),
+      }),
     );
+    await ddbClient.send(
+      new PutItemCommand({
+        TableName: Table.chimpin3.tableName,
+        Item: marshall(handRecord),
+      }),
+    );
+  } else {
+    playerRecord = unmarshall(playerGetResponse.Item) as PlayerRecord;
+    if (playerRecord.secretId !== message.dataClient.secretId) {
+      throw new Error("Incorrect secret");
+    }
+    // get the hand
+    const handGetResponse = await ddbClient.send(
+      new GetItemCommand({
+        TableName: Table.chimpin3.tableName,
+        Key: marshall({
+          pk: `game#${message.dataClient.gameCode}`,
+          sk: `hand#${message.dataClient.playerId}`,
+        }),
+      }),
+    );
+    if (handGetResponse.Item == null) {
+      throw new Error("No hand found for player");
+    }
+    handRecord = unmarshall(handGetResponse.Item) as
+      | HandGuessRecord
+      | HandVoteRecord;
+  }
+  if ("words" in handRecord) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { words, ...temp } = handRecord;
+    handPublicRecord = temp;
+  } else {
+    handPublicRecord = handRecord;
+  }
 
   if (apiClient == null) {
     apiClient = new ApiGatewayManagementApiClient({
@@ -97,34 +176,17 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
     await notifyDeleteConnection(deletedConnectionRecord, ddbClient, apiClient);
   }
 
-  const pk = `game#${message.dataClient.gameCode}`;
-  const sk = `hand#${message.dataClient.playerId}`;
-  let handRecord: HandGuessRecord | HandVoteRecord;
-  let handPublicRecord: HandGuessPublicRecord | HandVoteRecord;
-  if (gameMetaRecord.gameType === "guess") {
-    handRecord = {
-      pk,
-      sk,
-      playerId: playerRecord.sk.split("#")[1]!,
-      words: [],
-    };
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { words, ...temp } = handRecord;
-    handPublicRecord = temp;
-  } else {
-    handRecord = {
-      pk,
-      sk,
-      playerId: playerRecord.sk.split("#")[1]!,
-    };
-    handPublicRecord = handRecord;
-  }
-  // add hand to database
-  console.debug("Creating hand", handRecord);
+  // add the connection to the game
+  const connectionRecord: ConnectionRecord = {
+    pk: `game#${message.dataClient.gameCode}`,
+    sk: `connection#${event.requestContext.connectionId}`,
+    playerId: message.dataClient.playerId,
+  };
+  console.debug("Adding connection to game", connectionRecord);
   await ddbClient.send(
     new PutItemCommand({
       TableName: Table.chimpin3.tableName,
-      Item: marshall(handRecord),
+      Item: marshall(connectionRecord),
     }),
   );
 

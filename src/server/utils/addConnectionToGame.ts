@@ -21,7 +21,7 @@ export async function addConnectionToGame(
   // check that connection isn't in another game
   const deletedConnectionRecords = await deleteConnection(connectionId);
 
-  // update the player record with the name
+  // add/update the player record with the name
   let playerUpdateResponse;
   try {
     playerUpdateResponse = await ddbClient.send(
