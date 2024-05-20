@@ -1,10 +1,9 @@
 import React from "react";
-
-import { Game } from "./_components/Game";
+import { Game } from "~/app/_components/Game";
 
 export default async function Home() {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-base-100">
+    <main className="bg-base-100 flex min-h-screen flex-col items-center justify-center">
       <Game />
     </main>
   );

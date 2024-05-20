@@ -19,11 +19,11 @@ import {
   nameMinLength,
   type PlayerPublicRecord,
 } from "~/server/db/dynamodb/player";
-import type { AnyClientMessage } from "~/server/websocket/messageschema/client2server/any";
+import type { AnyClientMessage } from "~/websocket/messageschema/client2server/any";
 import {
   anyServerMessageSchema,
   type AnyServerMessage as AnyServer2ClientMessage,
-} from "~/server/websocket/messageschema/server2client/any";
+} from "~/websocket/messageschema/server2client/any";
 import Image from "next/image";
 import React from "react";
 import { v4 as uuid } from "uuid";
@@ -301,17 +301,17 @@ export function Game() {
           setImageRecords((prev) => {
             return uniqueObjArray(prev, message.dataServer.imageRecord);
           });
-          setImageRecords((prev) => {
-            return uniqueObjArray(prev, message.dataServer.imageRecord);
+          setHandRecords((prev) => {
+            return uniqueObjArray(prev, message.dataServer.handRecord);
           });
         } else if (message.action === "vote") {
-          setMyPlayerPublicRecord(message.dataServer?.playerPublicRecord);
           setImageRecords((prev) => {
             if (message.dataServer?.imageRecord) {
               return uniqueObjArray(prev, message.dataServer?.imageRecord);
             }
             return prev;
           });
+          setMyHandRecord(message.dataServer?.handRecord);
         }
       };
       return wsNew;
@@ -325,7 +325,7 @@ export function Game() {
         wsRef.current.close();
       }
     };
-  }, []);
+  }, [handleMessageLoading]);
 
   const sendMessage = React.useCallback(
     (data: AnyClientMessage) => {
@@ -346,7 +346,7 @@ export function Game() {
           <h1 className="text-5xl font-extrabold tracking-tight sm:text-[5rem]">
             Chimpin
           </h1>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 md:gap-8 justify-items-center w-full">
+          <div className="grid w-full grid-cols-1 justify-items-center gap-4 sm:grid-cols-3 md:gap-8">
             <button
               className="btn btn-primary btn-lg text-white"
               onClick={() => {
@@ -711,7 +711,7 @@ export function Game() {
   }
 
   return (
-    <div className="container flex flex-col items-center justify-center gap-12 px-4 py-4 max-w-[512px]">
+    <div className="container flex max-w-[512px] flex-col items-center justify-center gap-12 px-4 py-4">
       {content}
       <div
         role="alert"
@@ -721,7 +721,7 @@ export function Game() {
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
-          className="stroke-current shrink-0 h-6 w-6"
+          className="h-6 w-6 shrink-0 stroke-current"
           fill="none"
           viewBox="0 0 24 24"
         >
@@ -773,21 +773,21 @@ function Collage({
             ) : imageRecord?.loading ? (
               <div
                 key={playerPublicRecord.sk}
-                className="skeleton w-32 h-32"
+                className="skeleton h-32 w-32"
               ></div>
             ) : imageRecord?.error ? (
               <div
                 key={playerPublicRecord.sk}
-                className="bg-gray-200 w-32 h-32"
+                className="h-32 w-32 bg-gray-200"
               >
                 Try again!
               </div>
             ) : (
               <span
                 key={playerPublicRecord.sk}
-                className="bg-gray-200 w-32 h-32"
+                className="h-32 w-32 bg-gray-200"
               >
-                {playerPublicRecord.name}'s image
+                {playerPublicRecord.name}&apos;s image
               </span>
             );
           })}
@@ -800,11 +800,11 @@ function Collage({
           height={256}
         />
       ) : myImageRecord?.loading ? (
-        <div className="skeleton w-64 h-64"></div>
+        <div className="skeleton h-64 w-64"></div>
       ) : myImageRecord?.error ? (
-        <div className="bg-gray-200 w-64 h-64">Try again!</div>
+        <div className="h-64 w-64 bg-gray-200">Try again!</div>
       ) : (
-        <span className="bg-gray-200 w-64 h-64">Your image</span>
+        <span className="h-64 w-64 bg-gray-200">Your image</span>
       )}
     </>
   );
@@ -831,6 +831,8 @@ function SelectableCollage({
   sendMessage: (data: AnyClientMessage) => void;
   setErrorMessage: (message: string | undefined) => void;
 }) {
+  console.log("🚀 ~ myImageRecord:", myImageRecord);
+  console.log("🚀 ~ myHandRecord:", myHandRecord);
   return (
     <>
       <div className="grid auto-rows-auto grid-cols-2">
@@ -853,7 +855,7 @@ function SelectableCollage({
                   alt={`${playerPublicRecord.name}'s image`}
                   width={128}
                   height={128}
-                  className={`border-2 cursor-pointer ${isSelected ? "border-green-500" : "border-transparent"}`}
+                  className={`cursor-pointer border-2 ${isSelected ? "border-green-500" : "border-transparent"}`}
                   onClick={() => {
                     if (playerId == null || secretId == null) {
                       console.error("playerId or secretId not set");
@@ -871,7 +873,7 @@ function SelectableCollage({
                   }}
                 />
                 {isSelected && (
-                  <div className="absolute top-2 right-2 w-6 h-6 bg-green-500 flex justify-center items-center">
+                  <div className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center bg-green-500">
                     {/* SVG for the tick mark or use an icon library like FontAwesome */}
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
@@ -891,19 +893,19 @@ function SelectableCollage({
             ) : imageRecord?.loading ? (
               <div
                 key={playerPublicRecord.sk}
-                className="skeleton w-32 h-32"
+                className="skeleton h-32 w-32"
               ></div>
             ) : imageRecord?.error ? (
               <div
                 key={playerPublicRecord.sk}
-                className="bg-gray-200 w-32 h-32"
+                className="h-32 w-32 bg-gray-200"
               >
                 Try again!
               </div>
             ) : (
               <span
                 key={playerPublicRecord.sk}
-                className="bg-gray-200 w-32 h-32"
+                className="h-32 w-32 bg-gray-200"
               >
                 No image generated :-(
               </span>
@@ -932,10 +934,10 @@ function SelectableCollage({
                 });
               }
             }}
-            className={`border-2 cursor-pointer ${myHandRecord?.votedImageId === myImageRecord.sk.split("#")[1] ? "border-green-500" : "border-transparent"}`}
+            className={`cursor-pointer border-2 ${myHandRecord?.votedImageId === myImageRecord.sk.split("#")[1] ? "border-green-500" : "border-transparent"}`}
           />
           {myHandRecord?.votedImageId === myImageRecord.sk.split("#")[1] && (
-            <div className="absolute top-2 right-2 w-6 h-6 bg-green-500 flex justify-center items-center">
+            <div className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center bg-green-500">
               {/* SVG for the tick mark or use an icon library like FontAwesome */}
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -953,11 +955,11 @@ function SelectableCollage({
           )}
         </div>
       ) : myImageRecord?.loading ? (
-        <div className="skeleton w-64 h-64"></div>
+        <div className="skeleton h-64 w-64"></div>
       ) : myImageRecord?.error ? (
-        <div className="bg-gray-200 w-64 h-64">Try again!</div>
+        <div className="h-64 w-64 bg-gray-200">Try again!</div>
       ) : (
-        <span className="bg-gray-200 w-64 h-64">No image generated :-(</span>
+        <span className="h-64 w-64 bg-gray-200">No image generated :-(</span>
       )}
     </>
   );
@@ -1005,7 +1007,7 @@ function WinnerCollage({
                   alt={`${playerPublicRecord.name}'s image`}
                   width={128}
                   height={128}
-                  className={`border-2 cursor-pointer ${isWinning ? "border-yellow-500" : "border-transparent"}`}
+                  className={`cursor-pointer border-2 ${isWinning ? "border-yellow-500" : "border-transparent"}`}
                   onClick={() => {
                     if (playerId == null || secretId == null) {
                       console.error("playerId or secretId not set");
@@ -1023,25 +1025,25 @@ function WinnerCollage({
                   }}
                 />
                 {isWinning && (
-                  <StarIcon className="absolute top-2 right-2 h-6 w-6 text-yellow-500" />
+                  <StarIcon className="absolute right-2 top-2 h-6 w-6 text-yellow-500" />
                 )}
               </div>
             ) : imageRecord?.loading ? (
               <div
                 key={playerPublicRecord.sk}
-                className="skeleton w-32 h-32"
+                className="skeleton h-32 w-32"
               ></div>
             ) : imageRecord?.error ? (
               <div
                 key={playerPublicRecord.sk}
-                className="bg-gray-200 w-32 h-32"
+                className="h-32 w-32 bg-gray-200"
               >
                 Try again!
               </div>
             ) : (
               <span
                 key={playerPublicRecord.sk}
-                className="bg-gray-200 w-32 h-32"
+                className="h-32 w-32 bg-gray-200"
               >
                 No image generated :-(
               </span>
@@ -1058,15 +1060,15 @@ function WinnerCollage({
             className={`border-2 ${winningImageRecord?.sk === myImageRecord.sk ? "border-yellow-500" : "border-transparent"}`}
           />
           {winningImageRecord?.sk === myImageRecord.sk && (
-            <StarIcon className="absolute top-2 right-2 h-6 w-6 text-yellow-500" />
+            <StarIcon className="absolute right-2 top-2 h-6 w-6 text-yellow-500" />
           )}
         </div>
       ) : myImageRecord?.loading ? (
-        <div className="skeleton w-64 h-64"></div>
+        <div className="skeleton h-64 w-64"></div>
       ) : myImageRecord?.error ? (
-        <div className="bg-gray-200 w-64 h-64">Try again!</div>
+        <div className="h-64 w-64 bg-gray-200">Try again!</div>
       ) : (
-        <span className="bg-gray-200 w-64 h-64">No image generated :-(</span>
+        <span className="h-64 w-64 bg-gray-200">No image generated :-(</span>
       )}
     </>
   );

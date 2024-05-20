@@ -2,7 +2,6 @@ import "~/styles/globals.css";
 
 import { TRPCReactProvider } from "~/trpc/react";
 import { Happy_Monkey } from "next/font/google";
-import { cookies } from "next/headers";
 
 const fontSans = Happy_Monkey({
   subsets: ["latin"],
@@ -23,11 +22,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className={`font-sans ${fontSans.variable}`}>
-        <TRPCReactProvider cookies={cookies().toString()}>
-          {children}
-        </TRPCReactProvider>
+    <html lang="en" className={`font-sans ${fontSans.variable}`}>
+      <body>
+        <TRPCReactProvider>{children}</TRPCReactProvider>
       </body>
     </html>
   );

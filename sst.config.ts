@@ -1,96 +1,99 @@
-import { env } from "~/env";
-import type { SSTConfig } from "sst";
-import { Table, WebSocketApi } from "sst/constructs";
+/// <reference path="./.sst/platform/config.d.ts" />
+import * as aws from "@pulumi/aws";
 
-export default {
-  config(_input) {
+import { env } from "./src/env.js";
+
+const { NODE_ENV, ...envWithoutNodeEnv } = env;
+
+export default $config({
+  app(input) {
     return {
       name: "chimpin",
-      region: "ap-southeast-2",
+      removal: input?.stage === "production" ? "retain" : "remove",
+      home: "aws",
+      providers: {
+        aws: {
+          region: "ap-southeast-2",
+        },
+      },
     };
   },
-  stacks(app) {
-    app.stack(function Site({ stack }) {
-      const table = new Table(stack, "chimpin4", {
-        fields: {
-          pk: "string",
-          sk: "string",
-        },
-        primaryIndex: { partitionKey: "pk", sortKey: "sk" },
-        globalIndexes: {
-          skIndex: { partitionKey: "sk", sortKey: "pk" },
-        },
-      });
-      const api = new WebSocketApi(stack, "Api", {
-        defaults: {
-          function: {
-            bind: [table],
-            environment: env,
+  async run() {
+    const table = new sst.aws.Dynamo("Chimpin", {
+      fields: {
+        pk: "string",
+        sk: "string",
+      },
+      primaryIndex: { hashKey: "pk", rangeKey: "sk" },
+      globalIndexes: {
+        skIndex: { hashKey: "sk", rangeKey: "pk" },
+      },
+    });
+    const api = new sst.aws.ApiGatewayWebSocket("Api", {
+      transform: {
+        route: {
+          handler: {
+            link: [table],
+            timeout: "30 seconds",
+            environment: envWithoutNodeEnv,
           },
         },
-        routes: {
-          $connect: {
-            function: {
-              handler: "src/server/websocket/connect.main",
-              timeout: 30,
+        stage: {
+          name: $app.stage,
+        },
+      },
+    });
+    for (const routeName of [
+      "$connect",
+      "$disconnect",
+      "heartBeat",
+      "joinGame",
+      "makeGame",
+      "makeImage",
+      "progressGame",
+      "vote",
+    ]) {
+      const route = api.route(
+        `${routeName}`,
+        {
+          handler: `src/websocket/${routeName}.main`,
+          permissions: [
+            {
+              actions: ["execute-api:ManageConnections"],
+              resources: [
+                $concat(api.nodes.api.executionArn, "/*/*/@connections/*"),
+              ],
             },
-            returnResponse: true,
-          },
-          $disconnect: {
-            function: {
-              handler: "src/server/websocket/disconnect.main",
-              timeout: 30,
-            },
-            returnResponse: true,
-          },
-          heartBeat: {
-            function: {
-              handler: "src/server/websocket/heartBeat.main",
-              timeout: 30,
-            },
-            returnResponse: true,
-          },
-          joinGame: {
-            function: {
-              handler: "src/server/websocket/joinGame.main",
-              timeout: 30,
-            },
-            returnResponse: true,
-          },
-          makeGame: {
-            function: {
-              handler: "src/server/websocket/makeGame.main",
-              timeout: 30,
-            },
-            returnResponse: true,
-          },
-          makeImage: {
-            function: {
-              handler: "src/server/websocket/makeImage.main",
-              timeout: 30,
-            },
-            returnResponse: true,
-          },
-          progressGame: {
-            function: {
-              handler: "src/server/websocket/progressGame.main",
-              timeout: 30,
-            },
-            returnResponse: true,
-          },
-          vote: {
-            function: {
-              handler: "src/server/websocket/vote.main",
-              timeout: 30,
-            },
-            returnResponse: true,
+          ],
+        },
+        {
+          transform: {
+            route: { routeResponseSelectionExpression: "$default" },
           },
         },
-      });
+      );
+      function capitalizeFirstLetter(str: string) {
+        for (let i = 0; i < str.length; i++) {
+          if (str[i] !== "$") {
+            return str.charAt(i).toUpperCase() + str.slice(i + 1);
+          }
+        }
+      }
+      new aws.apigatewayv2.RouteResponse(
+        `${capitalizeFirstLetter(routeName)}Response`,
+        {
+          apiId: api.nodes.api.id,
+          routeId: route.nodes.route.id,
+          routeResponseKey: "$default",
+        },
+      );
+    }
 
-      stack.addOutputs({
-        ApiEndpoint: api.url,
-      });
+    new sst.aws.Nextjs("Site", {
+      environment: {
+        ...envWithoutNodeEnv,
+        NEXT_PUBLIC_API_ENDPOINT_WEBSOCKET: api.url,
+      },
     });
   },
-} satisfies SSTConfig;
+});

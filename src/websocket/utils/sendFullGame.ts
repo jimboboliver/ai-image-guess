@@ -5,13 +5,16 @@ import {
 } from "@aws-sdk/client-apigatewaymanagementapi";
 import { QueryCommand, type DynamoDB } from "@aws-sdk/client-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
-import { Table } from "sst/node/table";
+import { Resource } from "sst";
 
-import type { ConnectionRecord } from "../db/dynamodb/connection";
-import type { GameMetaRecord } from "../db/dynamodb/gameMeta";
-import type { ImageRecord } from "../db/dynamodb/image";
-import type { PlayerPublicRecord, PlayerRecord } from "../db/dynamodb/player";
-import type { FullGameMessage } from "../websocket/messageschema/server2client/fullGame";
+import type { ConnectionRecord } from "../../server/db/dynamodb/connection";
+import type { GameMetaRecord } from "../../server/db/dynamodb/gameMeta";
+import type { ImageRecord } from "../../server/db/dynamodb/image";
+import type {
+  PlayerPublicRecord,
+  PlayerRecord,
+} from "../../server/db/dynamodb/player";
+import type { FullGameMessage } from "../messageschema/server2client/fullGame";
 import { deleteConnection } from "./deleteConnection";
 
 export async function sendFullGame(
@@ -22,7 +25,7 @@ export async function sendFullGame(
 ) {
   const gameDdbResponse = await ddbClient.send(
     new QueryCommand({
-      TableName: Table.chimpin4.tableName,
+      TableName: Resource.Chimpin.name,
       KeyConditionExpression: "pk = :pk",
       ExpressionAttributeValues: marshall({
         ":pk": `game#${gameId}`,

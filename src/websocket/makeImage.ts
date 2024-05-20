@@ -9,13 +9,13 @@ import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import { env } from "~/env";
 import type { APIGatewayProxyWebsocketHandlerV2 } from "aws-lambda";
 import OpenAI from "openai";
-import { Table } from "sst/node/table";
+import { Resource } from "sst";
 import { v4 as uuidv4 } from "uuid";
 
-import type { ConnectionRecord } from "../db/dynamodb/connection";
-import type { ImageRecord } from "../db/dynamodb/image";
-import type { PlayerRecord } from "../db/dynamodb/player";
-import { sendMessageToAllGameConnections } from "../utils/sendMessageToAllGameConnections";
+import type { ConnectionRecord } from "../server/db/dynamodb/connection";
+import type { ImageRecord } from "../server/db/dynamodb/image";
+import type { PlayerRecord } from "../server/db/dynamodb/player";
+import { sendMessageToAllGameConnections } from "./utils/sendMessageToAllGameConnections";
 import {
   makeImageMessageSchema,
   type MakeImageMessage,
@@ -115,7 +115,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   // get connection from db
   const connectionResponse = await ddbClient.send(
     new QueryCommand({
-      TableName: Table.chimpin4.tableName,
+      TableName: Resource.Chimpin.name,
       IndexName: "skIndex",
       KeyConditionExpression: "sk = :sk",
       ExpressionAttributeValues: marshall({
@@ -134,7 +134,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   ) as ConnectionRecord;
   const playerDdbResponse = await ddbClient.send(
     new GetItemCommand({
-      TableName: Table.chimpin4.tableName,
+      TableName: Resource.Chimpin.name,
       Key: marshall({
         pk: connectionRecord.pk,
         sk: `player#${message.dataClient.playerId}`,
@@ -159,7 +159,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   };
   await ddbClient.send(
     new PutItemCommand({
-      TableName: Table.chimpin4.tableName,
+      TableName: Resource.Chimpin.name,
       Item: marshall(imageRecord),
     }),
   );
@@ -195,7 +195,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
     imageRecord.error = true;
     await ddbClient.send(
       new PutItemCommand({
-        TableName: Table.chimpin4.tableName,
+        TableName: Resource.Chimpin.name,
         Item: marshall(imageRecord),
       }),
     );
@@ -226,7 +226,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   imageRecord.loading = false;
   await ddbClient.send(
     new PutItemCommand({
-      TableName: Table.chimpin4.tableName,
+      TableName: Resource.Chimpin.name,
       Item: marshall(imageRecord),
     }),
   );

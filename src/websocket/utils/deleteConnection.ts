@@ -5,15 +5,15 @@ import {
   type AttributeValue,
 } from "@aws-sdk/client-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
-import { Table } from "sst/node/table";
+import { Resource } from "sst";
 
-import type { ConnectionRecord } from "../db/dynamodb/connection";
+import type { ConnectionRecord } from "../../server/db/dynamodb/connection";
 
 export async function deleteConnection(connectionId: string) {
   const ddbClient = new DynamoDB();
   const connectionDdbResponse = await ddbClient.send(
     new QueryCommand({
-      TableName: Table.chimpin4.tableName,
+      TableName: Resource.Chimpin.name,
       IndexName: "skIndex",
       KeyConditionExpression: "sk = :sk",
       ExpressionAttributeValues: marshall({
@@ -26,7 +26,7 @@ export async function deleteConnection(connectionId: string) {
   ) {
     await ddbClient.send(
       new DeleteItemCommand({
-        TableName: Table.chimpin4.tableName,
+        TableName: Resource.Chimpin.name,
         Key: {
           pk: connectionRecord.pk!,
           sk: connectionRecord.sk!,

@@ -4,10 +4,10 @@ import {
   type DynamoDB,
 } from "@aws-sdk/client-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
-import { Table } from "sst/node/table";
+import { Resource } from "sst";
 
-import type { ConnectionRecord } from "../db/dynamodb/connection";
-import { type PlayerRecord } from "../db/dynamodb/player";
+import type { ConnectionRecord } from "../../server/db/dynamodb/connection";
+import { type PlayerRecord } from "../../server/db/dynamodb/player";
 import { deleteConnection } from "./deleteConnection";
 
 export async function addConnectionToGame(
@@ -26,7 +26,7 @@ export async function addConnectionToGame(
   try {
     playerUpdateResponse = await ddbClient.send(
       new UpdateItemCommand({
-        TableName: Table.chimpin4.tableName,
+        TableName: Resource.Chimpin.name,
         Key: marshall({
           pk: `game#${gameId}`,
           sk: `player#${playerId}`,
@@ -82,7 +82,7 @@ export async function addConnectionToGame(
   console.debug("Adding connection to game", connectionRecord);
   await ddbClient.send(
     new PutItemCommand({
-      TableName: Table.chimpin4.tableName,
+      TableName: Resource.Chimpin.name,
       Item: marshall(connectionRecord),
     }),
   );

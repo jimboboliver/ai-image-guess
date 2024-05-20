@@ -2,8 +2,8 @@ import { ApiGatewayManagementApiClient } from "@aws-sdk/client-apigatewaymanagem
 import { DynamoDB } from "@aws-sdk/client-dynamodb";
 import type { APIGatewayProxyWebsocketHandlerV2 } from "aws-lambda";
 
-import { deleteConnection } from "../utils/deleteConnection";
-import { notifyDeleteConnection } from "../utils/notifyDeleteConnection";
+import { deleteConnection } from "./utils/deleteConnection";
+import { notifyDeleteConnection } from "./utils/notifyDeleteConnection";
 
 const ddbClient = new DynamoDB();
 

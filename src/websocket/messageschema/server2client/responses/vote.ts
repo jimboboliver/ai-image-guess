@@ -1,5 +1,5 @@
+import { handVoteRecordSchema } from "~/server/db/dynamodb/handVote";
 import { imageRecordSchema } from "~/server/db/dynamodb/image";
-import { playerPublicRecordSchema } from "~/server/db/dynamodb/player";
 import { z } from "zod";
 
 import { voteMessageSchema } from "../../client2server/vote";
@@ -11,7 +11,7 @@ export const voteResponseSchema = voteMessageSchema
     dataServer: z
       .object({
         imageRecord: imageRecordSchema,
-        playerPublicRecord: playerPublicRecordSchema,
+        handRecord: handVoteRecordSchema,
       })
       .optional(),
   })

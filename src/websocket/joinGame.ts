@@ -6,20 +6,20 @@ import {
 } from "@aws-sdk/client-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import type { APIGatewayProxyWebsocketHandlerV2 } from "aws-lambda";
-import { Table } from "sst/node/table";
+import { Resource } from "sst";
 
-import type { ConnectionRecord } from "../db/dynamodb/connection";
-import type { GameMetaRecord } from "../db/dynamodb/gameMeta";
+import type { ConnectionRecord } from "../server/db/dynamodb/connection";
+import type { GameMetaRecord } from "../server/db/dynamodb/gameMeta";
 import type {
   HandGuessPublicRecord,
   HandGuessRecord,
-} from "../db/dynamodb/handGuess";
-import type { HandVoteRecord } from "../db/dynamodb/handVote";
-import type { PlayerRecord } from "../db/dynamodb/player";
-import { deleteConnection } from "../utils/deleteConnection";
-import { notifyDeleteConnection } from "../utils/notifyDeleteConnection";
-import { notifyNewConnection } from "../utils/notifyNewConnection";
-import { sendFullGame } from "../utils/sendFullGame";
+} from "../server/db/dynamodb/handGuess";
+import type { HandVoteRecord } from "../server/db/dynamodb/handVote";
+import type { PlayerRecord } from "../server/db/dynamodb/player";
+import { deleteConnection } from "./utils/deleteConnection";
+import { notifyDeleteConnection } from "./utils/notifyDeleteConnection";
+import { notifyNewConnection } from "./utils/notifyNewConnection";
+import { sendFullGame } from "./utils/sendFullGame";
 import {
   joinGameMessageSchema,
   type JoinGameMessage,
@@ -58,7 +58,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
 
   const gameMetaDdbResponse = await ddbClient.send(
     new GetItemCommand({
-      TableName: Table.chimpin4.tableName,
+      TableName: Resource.Chimpin.name,
       Key: marshall({
         pk: `game#${message.dataClient.gameCode}`,
         sk: "meta",
@@ -86,7 +86,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   // add/update the player record with the name
   const playerGetResponse = await ddbClient.send(
     new GetItemCommand({
-      TableName: Table.chimpin4.tableName,
+      TableName: Resource.Chimpin.name,
       Key: marshall({
         pk: `game#${message.dataClient.gameCode}`,
         sk: `player#${message.dataClient.playerId}`,
@@ -119,19 +119,19 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
       sk: `player#${message.dataClient.playerId}`,
       name: message.dataClient.name,
       secretId: message.dataClient.secretId,
-      handId: skHand,
+      handId: skHand.split("#")[1]!,
     };
     // insert it
     console.debug("Creating player", playerRecord);
     await ddbClient.send(
       new PutItemCommand({
-        TableName: Table.chimpin4.tableName,
+        TableName: Resource.Chimpin.name,
         Item: marshall(playerRecord),
       }),
     );
     await ddbClient.send(
       new PutItemCommand({
-        TableName: Table.chimpin4.tableName,
+        TableName: Resource.Chimpin.name,
         Item: marshall(handRecord),
       }),
     );
@@ -143,7 +143,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
     // get the hand
     const handGetResponse = await ddbClient.send(
       new GetItemCommand({
-        TableName: Table.chimpin4.tableName,
+        TableName: Resource.Chimpin.name,
         Key: marshall({
           pk: `game#${message.dataClient.gameCode}`,
           sk: `hand#${message.dataClient.playerId}`,
@@ -185,7 +185,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   console.debug("Adding connection to game", connectionRecord);
   await ddbClient.send(
     new PutItemCommand({
-      TableName: Table.chimpin4.tableName,
+      TableName: Resource.Chimpin.name,
       Item: marshall(connectionRecord),
     }),
   );

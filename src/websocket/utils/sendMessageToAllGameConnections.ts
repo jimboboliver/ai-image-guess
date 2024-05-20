@@ -9,9 +9,9 @@ import {
   type DynamoDB,
 } from "@aws-sdk/client-dynamodb";
 import { marshall } from "@aws-sdk/util-dynamodb";
-import { Table } from "sst/node/table";
+import { Resource } from "sst";
 
-import type { AnyServerMessage } from "../websocket/messageschema/server2client/any";
+import type { AnyServerMessage } from "../messageschema/server2client/any";
 import { deleteConnection } from "./deleteConnection";
 
 export async function sendMessageToAllGameConnections(
@@ -22,7 +22,7 @@ export async function sendMessageToAllGameConnections(
 ) {
   const connectionDdbResponse = await ddbClient.send(
     new QueryCommand({
-      TableName: Table.chimpin4.tableName,
+      TableName: Resource.Chimpin.name,
       KeyConditionExpression: "pk = :pk and begins_with(sk, :idPrefix)",
       ExpressionAttributeValues: marshall({
         ":pk": `game#${gameId}`,

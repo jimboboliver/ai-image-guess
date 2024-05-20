@@ -7,11 +7,11 @@ import {
 } from "@aws-sdk/client-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import type { APIGatewayProxyWebsocketHandlerV2 } from "aws-lambda";
-import { Table } from "sst/node/table";
+import { Resource } from "sst";
 
-import type { ConnectionRecord } from "../db/dynamodb/connection";
-import type { GameMetaRecord } from "../db/dynamodb/gameMeta";
-import { sendMessageToAllGameConnections } from "../utils/sendMessageToAllGameConnections";
+import type { ConnectionRecord } from "../server/db/dynamodb/connection";
+import type { GameMetaRecord } from "../server/db/dynamodb/gameMeta";
+import { sendMessageToAllGameConnections } from "./utils/sendMessageToAllGameConnections";
 import {
   progressGameMessageSchema,
   type ProgressGameMessage,
@@ -51,7 +51,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   // get connection from db
   const connectionResponse = await ddbClient.send(
     new QueryCommand({
-      TableName: Table.chimpin4.tableName,
+      TableName: Resource.Chimpin.name,
       IndexName: "skIndex",
       KeyConditionExpression: "sk = :sk",
       ExpressionAttributeValues: marshall({
@@ -73,7 +73,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   const gameDdbRecord = (
     await ddbClient.send(
       new GetItemCommand({
-        TableName: Table.chimpin4.tableName,
+        TableName: Resource.Chimpin.name,
         Key: marshall({
           pk: connectionRecord.pk,
           sk: "meta",
@@ -104,7 +104,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   }
   await ddbClient.send(
     new UpdateItemCommand({
-      TableName: Table.chimpin4.tableName,
+      TableName: Resource.Chimpin.name,
       Key: marshall({
         pk: connectionRecord.pk,
         sk: "meta",

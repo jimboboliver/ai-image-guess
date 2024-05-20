@@ -7,18 +7,18 @@ import {
 } from "@aws-sdk/client-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import type { APIGatewayProxyWebsocketHandlerV2 } from "aws-lambda";
-import { Table } from "sst/node/table";
+import { Resource } from "sst";
 
-import type { ConnectionRecord } from "../db/dynamodb/connection";
-import type { HandVoteRecord } from "../db/dynamodb/handVote";
-import type { ImageRecord } from "../db/dynamodb/image";
-import type { PlayerRecord } from "../db/dynamodb/player";
-import { sendMessageToAllGameConnections } from "../utils/sendMessageToAllGameConnections";
+import type { ConnectionRecord } from "../server/db/dynamodb/connection";
+import type { HandVoteRecord } from "../server/db/dynamodb/handVote";
+import type { ImageRecord } from "../server/db/dynamodb/image";
+import type { PlayerRecord } from "../server/db/dynamodb/player";
 import {
   voteMessageSchema,
   type VoteMessage,
 } from "./messageschema/client2server/vote";
 import type { VoteResponse } from "./messageschema/server2client/responses/vote";
+import { sendMessageToAllGameConnections } from "./utils/sendMessageToAllGameConnections";
 
 const ddbClient = new DynamoDB();
 
@@ -59,7 +59,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   // check that the player hasn't voted yet
   const connectionResponse = await ddbClient.send(
     new QueryCommand({
-      TableName: Table.chimpin4.tableName,
+      TableName: Resource.Chimpin.name,
       IndexName: "skIndex",
       KeyConditionExpression: "sk = :sk",
       ExpressionAttributeValues: marshall({
@@ -78,7 +78,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   ) as ConnectionRecord;
   const playerDdbResponse = await ddbClient.send(
     new GetItemCommand({
-      TableName: Table.chimpin4.tableName,
+      TableName: Resource.Chimpin.name,
       Key: marshall({
         pk: connectionRecord.pk,
         sk: `player#${message.dataClient.playerId}`,
@@ -95,7 +95,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   // get player's hand
   const handDdbResponse = await ddbClient.send(
     new GetItemCommand({
-      TableName: Table.chimpin4.tableName,
+      TableName: Resource.Chimpin.name,
       Key: marshall({
         pk: connectionRecord.pk,
         sk: `hand#${playerRecord.handId}`,
@@ -120,7 +120,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   // get image from db
   const imageResponse = await ddbClient.send(
     new QueryCommand({
-      TableName: Table.chimpin4.tableName,
+      TableName: Resource.Chimpin.name,
       KeyConditionExpression: "pk = :pk and sk = :sk",
       ExpressionAttributeValues: marshall({
         ":pk": connectionRecord.pk,
@@ -139,7 +139,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   try {
     await ddbClient.send(
       new UpdateItemCommand({
-        TableName: Table.chimpin4.tableName,
+        TableName: Resource.Chimpin.name,
         Key: marshall({
           pk: handRecord.pk,
           sk: handRecord.sk,
@@ -178,7 +178,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   // TODO handle race to update vote count
   await ddbClient.send(
     new UpdateItemCommand({
-      TableName: Table.chimpin4.tableName,
+      TableName: Resource.Chimpin.name,
       Key: marshall({
         pk: connectionRecord.pk,
         sk: `image#${message.dataClient.imageId}`,
@@ -192,9 +192,6 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
       }),
     }),
   );
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { secretId, ...playerPublicRecord } = playerRecord;
 
   // send vote to all connections
   await sendMessageToAllGameConnections(
@@ -211,7 +208,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
     ...message,
     dataServer: {
       imageRecord,
-      playerPublicRecord,
+      handRecord,
     },
     serverStatus: "success",
   };
