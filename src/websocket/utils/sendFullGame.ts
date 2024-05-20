@@ -28,7 +28,7 @@ export async function sendFullGame(
       TableName: Resource.Chimpin.name,
       KeyConditionExpression: "pk = :pk",
       ExpressionAttributeValues: marshall({
-        ":pk": `game#${gameId}`,
+        ":pk": `lobby#${gameId}`,
       }),
     }),
   );

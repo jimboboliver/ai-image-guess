@@ -28,7 +28,7 @@ export async function addConnectionToGame(
       new UpdateItemCommand({
         TableName: Resource.Chimpin.name,
         Key: marshall({
-          pk: `game#${gameId}`,
+          pk: `lobby#${gameId}`,
           sk: `player#${playerId}`,
         }),
         UpdateExpression: "SET #name = :name, secretId = :secretId",
@@ -75,7 +75,7 @@ export async function addConnectionToGame(
 
   // add the connection to the game
   const connectionRecord: ConnectionRecord = {
-    pk: `game#${gameId}`,
+    pk: `lobby#${gameId}`,
     sk: `connection#${connectionId}`,
     playerId,
   };

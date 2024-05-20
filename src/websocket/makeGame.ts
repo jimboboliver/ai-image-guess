@@ -64,7 +64,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   // generate game code and create game
   const gameCode = generateRandomCode();
   const gameMetaRecord: GameMetaRecord = {
-    pk: `game#${gameCode}`,
+    pk: `lobby#${gameCode}`,
     sk: "meta",
     status: "lobby",
     gameCode: gameCode,
@@ -77,7 +77,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
     new GetItemCommand({
       TableName: Resource.Chimpin.name,
       Key: marshall({
-        pk: `game#${gameCode}`,
+        pk: `lobby#${gameCode}`,
         sk: "meta",
       }),
     }),
@@ -110,7 +110,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
     new GetItemCommand({
       TableName: Resource.Chimpin.name,
       Key: marshall({
-        pk: `game#${gameCode}`,
+        pk: `lobby#${gameCode}`,
         sk: `player#${message.dataClient.playerId}`,
       }),
     }),
@@ -118,7 +118,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   let playerRecord: PlayerRecord;
   let handRecord: HandGuessRecord | HandVoteRecord;
   if (playerGetResponse.Item == null) {
-    const pk = `game#${gameCode}`;
+    const pk = `lobby#${gameCode}`;
     const skHand = `hand#${message.dataClient.playerId}`;
     if (gameMetaRecord.gameType === "guess") {
       handRecord = {
@@ -136,7 +136,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
     }
     // make a new player
     playerRecord = {
-      pk: `game#${gameCode}`,
+      pk: `lobby#${gameCode}`,
       sk: `player#${message.dataClient.playerId}`,
       name: message.dataClient.name,
       secretId: message.dataClient.secretId,
@@ -166,7 +166,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
       new GetItemCommand({
         TableName: Resource.Chimpin.name,
         Key: marshall({
-          pk: `game#${gameCode}`,
+          pk: `lobby#${gameCode}`,
           sk: `hand#${message.dataClient.playerId}`,
         }),
       }),
@@ -181,7 +181,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
 
   // add the connection to the game
   const connectionRecord: ConnectionRecord = {
-    pk: `game#${gameCode}`,
+    pk: `lobby#${gameCode}`,
     sk: `connection#${event.requestContext.connectionId}`,
     playerId: message.dataClient.playerId,
   };

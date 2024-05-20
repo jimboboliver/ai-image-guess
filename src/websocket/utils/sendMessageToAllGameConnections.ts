@@ -25,7 +25,7 @@ export async function sendMessageToAllGameConnections(
       TableName: Resource.Chimpin.name,
       KeyConditionExpression: "pk = :pk and begins_with(sk, :idPrefix)",
       ExpressionAttributeValues: marshall({
-        ":pk": `game#${gameId}`,
+        ":pk": `lobby#${gameId}`,
         ":idPrefix": "connection#",
       }),
     }),

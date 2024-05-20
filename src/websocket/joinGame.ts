@@ -16,15 +16,15 @@ import type {
 } from "../server/db/dynamodb/handGuess";
 import type { HandVoteRecord } from "../server/db/dynamodb/handVote";
 import type { PlayerRecord } from "../server/db/dynamodb/player";
-import { deleteConnection } from "./utils/deleteConnection";
-import { notifyDeleteConnection } from "./utils/notifyDeleteConnection";
-import { notifyNewConnection } from "./utils/notifyNewConnection";
-import { sendFullGame } from "./utils/sendFullGame";
 import {
   joinGameMessageSchema,
   type JoinGameMessage,
 } from "./messageschema/client2server/joinGame";
 import type { JoinGameResponse } from "./messageschema/server2client/responses/joinGame";
+import { deleteConnection } from "./utils/deleteConnection";
+import { notifyDeleteConnection } from "./utils/notifyDeleteConnection";
+import { notifyNewConnection } from "./utils/notifyNewConnection";
+import { sendFullGame } from "./utils/sendFullGame";
 
 const ddbClient = new DynamoDB();
 
@@ -60,7 +60,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
     new GetItemCommand({
       TableName: Resource.Chimpin.name,
       Key: marshall({
-        pk: `game#${message.dataClient.gameCode}`,
+        pk: `lobby#${message.dataClient.gameCode}`,
         sk: "meta",
       }),
     }),
@@ -88,7 +88,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
     new GetItemCommand({
       TableName: Resource.Chimpin.name,
       Key: marshall({
-        pk: `game#${message.dataClient.gameCode}`,
+        pk: `lobby#${message.dataClient.gameCode}`,
         sk: `player#${message.dataClient.playerId}`,
       }),
     }),
@@ -97,7 +97,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   let handRecord: HandGuessRecord | HandVoteRecord;
   let handPublicRecord: HandGuessPublicRecord | HandVoteRecord;
   if (playerGetResponse.Item == null) {
-    const pk = `game#${message.dataClient.gameCode}`;
+    const pk = `lobby#${message.dataClient.gameCode}`;
     const skHand = `hand#${message.dataClient.playerId}`;
     if (gameMetaRecord.gameType === "guess") {
       handRecord = {
@@ -115,7 +115,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
     }
     // make a new player
     playerRecord = {
-      pk: `game#${message.dataClient.gameCode}`,
+      pk: `lobby#${message.dataClient.gameCode}`,
       sk: `player#${message.dataClient.playerId}`,
       name: message.dataClient.name,
       secretId: message.dataClient.secretId,
@@ -145,7 +145,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
       new GetItemCommand({
         TableName: Resource.Chimpin.name,
         Key: marshall({
-          pk: `game#${message.dataClient.gameCode}`,
+          pk: `lobby#${message.dataClient.gameCode}`,
           sk: `hand#${message.dataClient.playerId}`,
         }),
       }),
@@ -178,7 +178,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
 
   // add the connection to the game
   const connectionRecord: ConnectionRecord = {
-    pk: `game#${message.dataClient.gameCode}`,
+    pk: `lobby#${message.dataClient.gameCode}`,
     sk: `connection#${event.requestContext.connectionId}`,
     playerId: message.dataClient.playerId,
   };
