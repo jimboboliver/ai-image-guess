@@ -120,11 +120,16 @@ export function Game() {
 
   const [errorMessage, setErrorMessage] = React.useState<string | undefined>();
 
+  const intervaHeartBeatRef = React.useRef<NodeJS.Timeout | null>();
   React.useEffect(() => {
     const openWebSocket = () => {
       console.debug("Opening websocket");
       const wsNew = new WebSocket(env.NEXT_PUBLIC_API_ENDPOINT_WEBSOCKET);
-      const intervalHeartBeat = setInterval(
+      if (intervaHeartBeatRef.current != null) {
+        clearInterval(intervaHeartBeatRef.current);
+        intervaHeartBeatRef.current = null;
+      }
+      intervaHeartBeatRef.current = setInterval(
         () => {
           if (wsNew.readyState === wsNew.OPEN) {
             wsNew.send(JSON.stringify({ action: "heartBeat" }));
@@ -137,7 +142,10 @@ export function Game() {
       };
       wsNew.onclose = () => {
         console.debug("ws close");
-        clearInterval(intervalHeartBeat);
+        if (intervaHeartBeatRef.current != null) {
+          clearInterval(intervaHeartBeatRef.current);
+          intervaHeartBeatRef.current = null;
+        }
         setTimeout(() => {
           const newWs = openWebSocket();
           setWs(newWs);
@@ -323,6 +331,10 @@ export function Game() {
     return () => {
       if (wsRef.current != null) {
         wsRef.current.close();
+      }
+      if (intervaHeartBeatRef.current != null) {
+        clearInterval(intervaHeartBeatRef.current);
+        intervaHeartBeatRef.current = null;
       }
     };
   }, [handleMessageLoading]);
