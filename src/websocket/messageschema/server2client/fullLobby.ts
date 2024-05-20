@@ -1,21 +1,21 @@
 import { connectionRecordSchema } from "~/server/db/dynamodb/connection";
-import { gameMetaRecordSchema } from "~/server/db/dynamodb/gameMeta";
 import { handGuessPublicRecordSchema } from "~/server/db/dynamodb/handGuess";
 import { handVoteRecordSchema } from "~/server/db/dynamodb/handVote";
 import { imageRecordSchema } from "~/server/db/dynamodb/image";
+import { lobbyMetaRecordSchema } from "~/server/db/dynamodb/lobbyMeta";
 import { playerPublicRecordSchema } from "~/server/db/dynamodb/player";
 import { z } from "zod";
 
-export const fullGameMessageSchema = z.object({
-  action: z.literal("fullGame"),
+export const fullLobbyMessageSchema = z.object({
+  action: z.literal("fullLobby"),
   dataServer: z.array(
     imageRecordSchema
       .or(playerPublicRecordSchema)
-      .or(gameMetaRecordSchema)
+      .or(lobbyMetaRecordSchema)
       .or(connectionRecordSchema)
       .or(handGuessPublicRecordSchema)
       .or(handVoteRecordSchema),
   ),
 });
 
-export type FullGameMessage = z.infer<typeof fullGameMessageSchema>;
+export type FullLobbyMessage = z.infer<typeof fullLobbyMessageSchema>;

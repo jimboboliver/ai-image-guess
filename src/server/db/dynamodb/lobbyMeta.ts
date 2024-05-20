@@ -2,11 +2,11 @@ import { z } from "zod";
 
 import { baseRecord } from "./base";
 
-export const gameCodeLength = 4;
+export const lobbyCodeLength = 4;
 
-export const gameMetaRecordSchema = baseRecord.extend({
+export const lobbyMetaRecordSchema = baseRecord.extend({
   status: z.enum(["lobby", "playing", "finished"]),
-  gameCode: z.string().length(gameCodeLength),
+  lobbyCode: z.string().length(lobbyCodeLength),
   ownerConnectionId: z.string(),
   timestamps: z
     .object({
@@ -17,4 +17,4 @@ export const gameMetaRecordSchema = baseRecord.extend({
   gameType: z.enum(["vote", "guess"]),
 });
 
-export type GameMetaRecord = z.infer<typeof gameMetaRecordSchema>;
+export type LobbyMetaRecord = z.infer<typeof lobbyMetaRecordSchema>;

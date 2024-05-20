@@ -35,14 +35,14 @@ export async function notifyDeleteConnection(
         "Sending message to a connection",
         existingConnectionRecord.sk.split("#")[1],
       );
-      const fullGameMessage: DeleteConnectionMessage = {
+      const fullLobbyMessage: DeleteConnectionMessage = {
         action: "deleteConnection",
         dataServer: connectionRecord,
       };
       await apiClient.send(
         new PostToConnectionCommand({
           ConnectionId: connectionId,
-          Data: JSON.stringify(fullGameMessage),
+          Data: JSON.stringify(fullLobbyMessage),
         }),
       );
     } catch (error) {

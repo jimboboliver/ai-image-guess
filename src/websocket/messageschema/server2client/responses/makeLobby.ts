@@ -4,12 +4,12 @@ import { handVoteRecordSchema } from "~/server/db/dynamodb/handVote";
 import { playerPublicRecordSchema } from "~/server/db/dynamodb/player";
 import { z } from "zod";
 
-import { makeGameMessageSchema } from "../../client2server/makeGame";
+import { makeLobbyMessageSchema } from "../../client2server/makeLobby";
 import { directResponseSchema } from "./directResponseSchema";
 
-export const makeGameResponseSchema = makeGameMessageSchema
+export const makeLobbyResponseSchema = makeLobbyMessageSchema
   .extend({
-    dataClient: makeGameMessageSchema.shape.dataClient.optional(),
+    dataClient: makeLobbyMessageSchema.shape.dataClient.optional(),
     dataServer: z
       .object({
         playerPublicRecord: playerPublicRecordSchema,
@@ -26,4 +26,4 @@ export const makeGameResponseSchema = makeGameMessageSchema
     return data.dataServer == null;
   });
 
-export type MakeGameResponse = z.infer<typeof makeGameResponseSchema>;
+export type MakeLobbyResponse = z.infer<typeof makeLobbyResponseSchema>;

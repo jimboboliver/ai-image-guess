@@ -3,10 +3,6 @@
 import { CheckIcon, StarIcon } from "@heroicons/react/24/solid";
 import { env } from "~/env";
 import type { ConnectionRecord } from "~/server/db/dynamodb/connection";
-import {
-  gameCodeLength,
-  type GameMetaRecord,
-} from "~/server/db/dynamodb/gameMeta";
 import type { HandGuessPublicRecord } from "~/server/db/dynamodb/handGuess";
 import type { HandVoteRecord } from "~/server/db/dynamodb/handVote";
 import {
@@ -14,6 +10,10 @@ import {
   promptImageMinLength,
   type ImageRecord,
 } from "~/server/db/dynamodb/image";
+import {
+  lobbyCodeLength,
+  type LobbyMetaRecord,
+} from "~/server/db/dynamodb/lobbyMeta";
 import {
   nameMaxLength,
   nameMinLength,
@@ -41,8 +41,9 @@ interface MessageLoading {
 }
 
 export function Game() {
-  const [ownedGame, setOwnedGame] = React.useState<boolean>();
-  const [gameMetaRecord, setGameMetaRecord] = React.useState<GameMetaRecord>();
+  const [ownedLobby, setOwnedLobby] = React.useState<boolean>();
+  const [lobbyMetaRecord, setLobbyMetaRecord] =
+    React.useState<LobbyMetaRecord>();
   const [, setConnectionRecords] = React.useState<ConnectionRecord[]>([]);
   const [playerPublicRecords, setPlayerPublicRecords] = React.useState<
     PlayerPublicRecord[]
@@ -64,7 +65,7 @@ export function Game() {
     undefined,
   );
   const [name, setName] = React.useState<string>("");
-  const [gameCode, setGameCode] = React.useState<string>("");
+  const [lobbyCode, setLobbyCode] = React.useState<string>("");
   const [promptImage, setPromptImage] = React.useState<string>("");
   const imageLoadingRef = React.useRef<MessageLoading>();
   const [imageLoading, setImageLoading] = React.useState<MessageLoading>();
@@ -74,14 +75,14 @@ export function Game() {
           (x) => x.playerId === myPlayerPublicRecord?.sk.split("#")[1],
         )[0]
       : undefined;
-  const gameMetaLoadingRef = React.useRef<MessageLoading>();
-  const [gameMetaLoading, setGameMetaLoading] =
+  const lobbyMetaLoadingRef = React.useRef<MessageLoading>();
+  const [lobbyMetaLoading, setLobbyMetaLoading] =
     React.useState<MessageLoading>();
-  const gameJoinLoadingRef = React.useRef<MessageLoading>();
-  const [gameJoinLoading, setGameJoinLoading] =
+  const lobbyJoinLoadingRef = React.useRef<MessageLoading>();
+  const [lobbyJoinLoading, setLobbyJoinLoading] =
     React.useState<MessageLoading>();
-  const progressGameLoadingRef = React.useRef<MessageLoading>();
-  const [progressGameLoading, setProgressGameLoading] =
+  const progressLobbyLoadingRef = React.useRef<MessageLoading>();
+  const [progressLobbyLoading, setProgressLobbyLoading] =
     React.useState<MessageLoading>();
 
   const { playerId, secretId } = usePlayerId();
@@ -190,7 +191,7 @@ export function Game() {
               imageLoadingRef,
             );
           } else if (
-            gameMetaLoadingRef.current?.messageId === message.messageId
+            lobbyMetaLoadingRef.current?.messageId === message.messageId
           ) {
             handleMessageLoading(
               (prev) => ({
@@ -198,15 +199,15 @@ export function Game() {
                 error: true,
                 messageId: prev?.messageId ?? "",
               }),
-              setGameMetaLoading,
-              gameMetaLoadingRef,
+              setLobbyMetaLoading,
+              lobbyMetaLoadingRef,
             );
           }
         } else if ("message" in message) {
           // internal server error message
           console.error(message.message);
           setErrorMessage(message.message);
-        } else if (message.action === "fullGame") {
+        } else if (message.action === "fullLobby") {
           const newImageRecords: ImageRecord[] = [];
           const newPlayerRecords: PlayerPublicRecord[] = [];
           const newHandRecords: (HandGuessPublicRecord | HandVoteRecord)[] = [];
@@ -216,7 +217,7 @@ export function Game() {
             } else if ("name" in row) {
               newPlayerRecords.push(row);
             } else if ("status" in row) {
-              setGameMetaRecord(row);
+              setLobbyMetaRecord(row);
             } else if ("imageId" in row) {
               newHandRecords.push(row);
             }
@@ -246,51 +247,53 @@ export function Game() {
           setConnectionRecords((prev) =>
             prev.filter((x) => x.sk !== message.dataServer.sk),
           );
-        } else if (message.action === "progressedGame") {
-          setGameMetaRecord(message.dataServer);
-        } else if (message.action === "progressGame") {
+        } else if (message.action === "progressedLobby") {
+          setLobbyMetaRecord(message.dataServer);
+        } else if (message.action === "progressLobby") {
           if (message.dataClient?.status === "lobby") {
             setPromptImage("");
           }
-          if (progressGameLoadingRef.current?.messageId === message.messageId) {
+          if (
+            progressLobbyLoadingRef.current?.messageId === message.messageId
+          ) {
             handleMessageLoading(
               (prev) => ({
                 loading: false,
                 error: false,
                 messageId: prev?.messageId ?? "",
               }),
-              setProgressGameLoading,
-              progressGameLoadingRef,
+              setProgressLobbyLoading,
+              progressLobbyLoadingRef,
             );
           }
-        } else if (message.action === "joinGame") {
+        } else if (message.action === "joinLobby") {
           setMyPlayerPublicRecord(message.dataServer?.playerPublicRecord);
           setMyHandRecord(message.dataServer?.handRecord);
           setMyConnectionRecord(message.dataServer?.connectionRecord);
-          if (gameJoinLoadingRef.current?.messageId === message.messageId) {
+          if (lobbyJoinLoadingRef.current?.messageId === message.messageId) {
             handleMessageLoading(
               (prev) => ({
                 loading: false,
                 error: false,
                 messageId: prev?.messageId ?? "",
               }),
-              setGameJoinLoading,
-              gameJoinLoadingRef,
+              setLobbyJoinLoading,
+              lobbyJoinLoadingRef,
             );
           }
-        } else if (message.action === "makeGame") {
+        } else if (message.action === "makeLobby") {
           setMyPlayerPublicRecord(message.dataServer?.playerPublicRecord);
           setMyHandRecord(message.dataServer?.handRecord);
           setMyConnectionRecord(message.dataServer?.connectionRecord);
-          if (gameMetaLoadingRef.current?.messageId === message.messageId) {
+          if (lobbyMetaLoadingRef.current?.messageId === message.messageId) {
             handleMessageLoading(
               (prev) => ({
                 loading: false,
                 error: false,
                 messageId: prev?.messageId ?? "",
               }),
-              setGameMetaLoading,
-              gameMetaLoadingRef,
+              setLobbyMetaLoading,
+              lobbyMetaLoadingRef,
             );
           }
         } else if (message.action === "makeImage") {
@@ -351,8 +354,8 @@ export function Game() {
   );
 
   let content;
-  if (gameMetaRecord == null) {
-    if (ownedGame == null) {
+  if (lobbyMetaRecord == null) {
+    if (ownedLobby == null) {
       content = (
         <>
           <h1 className="text-5xl font-extrabold tracking-tight sm:text-[5rem]">
@@ -362,28 +365,28 @@ export function Game() {
             <button
               className="btn btn-primary btn-lg text-white"
               onClick={() => {
-                setOwnedGame(false);
+                setOwnedLobby(false);
               }}
             >
-              Join Game
+              Join Lobby
             </button>
             <div className="divider sm:divider-horizontal w-full">OR</div>
             <button
               className="btn btn-secondary btn-lg"
               onClick={() => {
                 setErrorMessage(undefined);
-                setOwnedGame(true);
+                setOwnedLobby(true);
               }}
             >
-              Make Game
+              Make Lobby
             </button>
           </div>
         </>
       );
-    } else if (ownedGame) {
+    } else if (ownedLobby) {
       content = (
         <>
-          <BackButton onClick={() => setOwnedGame(undefined)} />
+          <BackButton onClick={() => setOwnedLobby(undefined)} />
           <input
             placeholder="Enter your name"
             className="input input-bordered input-primary input-lg w-full max-w-xs"
@@ -408,27 +411,28 @@ export function Game() {
                   error: false,
                   messageId,
                 },
-                setGameMetaLoading,
-                gameMetaLoadingRef,
+                setLobbyMetaLoading,
+                lobbyMetaLoadingRef,
               );
               sendMessage({
-                action: "makeGame",
+                action: "makeLobby",
                 dataClient: { name, playerId, secretId },
                 messageId,
               });
             }}
             disabled={
               name.length < nameMinLength ||
-              (gameMetaLoading?.loading ?? false) ||
-              gameMetaRecord != null
+              (lobbyMetaLoading?.loading ?? false) ||
+              lobbyMetaRecord != null
             }
           >
-            {(gameMetaLoading?.loading ?? false) && !gameMetaLoading?.error ? (
+            {(lobbyMetaLoading?.loading ?? false) &&
+            !lobbyMetaLoading?.error ? (
               <span className="loading loading-spinner"></span>
-            ) : gameMetaRecord != null ? (
+            ) : lobbyMetaRecord != null ? (
               <CheckIcon className="h-6 w-6" />
             ) : (
-              "Make Game"
+              "Make Lobby"
             )}
           </button>
         </>
@@ -436,14 +440,14 @@ export function Game() {
     } else {
       content = (
         <>
-          <BackButton onClick={() => setOwnedGame(undefined)} />
+          <BackButton onClick={() => setOwnedLobby(undefined)} />
           <input
-            placeholder="Enter game code"
+            placeholder="Enter lobby code"
             className="input input-bordered input-primary input-lg w-full max-w-xs"
-            value={gameCode}
+            value={lobbyCode}
             onChange={(e) => {
-              setGameCode(
-                e.target.value.toUpperCase().slice(0, gameCodeLength).trim(),
+              setLobbyCode(
+                e.target.value.toUpperCase().slice(0, lobbyCodeLength).trim(),
               );
             }}
             aria-autocomplete="none"
@@ -472,39 +476,40 @@ export function Game() {
                   error: false,
                   messageId,
                 },
-                setGameJoinLoading,
-                gameJoinLoadingRef,
+                setLobbyJoinLoading,
+                lobbyJoinLoadingRef,
               );
               sendMessage({
-                action: "joinGame",
-                dataClient: { name, gameCode, playerId, secretId },
+                action: "joinLobby",
+                dataClient: { name, lobbyCode: lobbyCode, playerId, secretId },
                 messageId,
               });
             }}
             disabled={
-              gameCode.length !== gameCodeLength ||
+              lobbyCode.length !== lobbyCodeLength ||
               name.length < nameMinLength ||
-              (gameJoinLoading?.loading ?? false) ||
-              gameMetaRecord != null
+              (lobbyJoinLoading?.loading ?? false) ||
+              lobbyMetaRecord != null
             }
           >
-            {(gameJoinLoading?.loading ?? false) && !gameJoinLoading?.error ? (
+            {(lobbyJoinLoading?.loading ?? false) &&
+            !lobbyJoinLoading?.error ? (
               <span className="loading loading-spinner"></span>
-            ) : gameMetaRecord != null ? (
+            ) : lobbyMetaRecord != null ? (
               <CheckIcon className="h-6 w-6" />
             ) : (
-              "Join Game"
+              "Join Lobby"
             )}
           </button>
         </>
       );
     }
-  } else if (gameMetaRecord.status === "lobby") {
-    if (ownedGame) {
+  } else if (lobbyMetaRecord.status === "lobby") {
+    if (ownedLobby) {
       content = (
         <>
           <h1 className="text-xl font-extrabold sm:text-3xl">
-            Give friends the game code: {gameMetaRecord.gameCode}
+            Give friends the lobby code: {lobbyMetaRecord.lobbyCode}
           </h1>
           <h1 className="text-xl font-extrabold sm:text-3xl">
             Wait for friends to join...
@@ -520,19 +525,19 @@ export function Game() {
                   error: false,
                   messageId,
                 },
-                setProgressGameLoading,
-                progressGameLoadingRef,
+                setProgressLobbyLoading,
+                progressLobbyLoadingRef,
               );
               sendMessage({
-                action: "progressGame",
+                action: "progressLobby",
                 dataClient: { status: "playing" },
                 messageId,
               });
             }}
-            disabled={progressGameLoading?.loading ?? false}
+            disabled={progressLobbyLoading?.loading ?? false}
           >
-            {(progressGameLoading?.loading ?? false) &&
-            !progressGameLoading?.error ? (
+            {(progressLobbyLoading?.loading ?? false) &&
+            !progressLobbyLoading?.error ? (
               <span className="loading loading-spinner"></span>
             ) : playerPublicRecords.length > 1 ? (
               "Proceed"
@@ -551,10 +556,10 @@ export function Game() {
       content = (
         <>
           <h1 className="text-xl font-extrabold sm:text-3xl">
-            Game code: {gameMetaRecord.gameCode}
+            Lobby code: {lobbyMetaRecord.lobbyCode}
           </h1>
           <h1 className="text-xl font-extrabold sm:text-3xl">
-            Wait for the game owner to proceed...
+            Wait for the lobby owner to proceed...
           </h1>
           <div className="flex gap-3">
             {playerPublicRecords.map((connectionRecord) => (
@@ -564,10 +569,10 @@ export function Game() {
         </>
       );
     }
-  } else if (gameMetaRecord.status === "playing") {
-    if (gameMetaRecord.gameType === "vote") {
+  } else if (lobbyMetaRecord.status === "playing") {
+    if (lobbyMetaRecord.gameType === "vote") {
       if (
-        (currentTime ?? 0) < (gameMetaRecord.timestamps?.timestampEndPlay ?? 0)
+        (currentTime ?? 0) < (lobbyMetaRecord.timestamps?.timestampEndPlay ?? 0)
       ) {
         content = (
           <div className="grid grid-rows-[1fr_1fr_1fr]">
@@ -579,7 +584,7 @@ export function Game() {
             />
             <div className="grid grid-flow-row">
               <Countdown
-                timestampEnd={gameMetaRecord.timestamps?.timestampEndPlay ?? 0}
+                timestampEnd={lobbyMetaRecord.timestamps?.timestampEndPlay ?? 0}
               />
               <textarea
                 className="textarea textarea-primary"
@@ -636,7 +641,7 @@ export function Game() {
           </div>
         );
       } else if (
-        (currentTime ?? 0) < (gameMetaRecord.timestamps?.timestampEndVote ?? 0)
+        (currentTime ?? 0) < (lobbyMetaRecord.timestamps?.timestampEndVote ?? 0)
       ) {
         content = (
           <div className="grid grid-rows-[1fr_1fr_1fr]">
@@ -653,7 +658,7 @@ export function Game() {
             />
             <div className="grid grid-flow-row">
               <Countdown
-                timestampEnd={gameMetaRecord.timestamps?.timestampEndVote ?? 0}
+                timestampEnd={lobbyMetaRecord.timestamps?.timestampEndVote ?? 0}
               />
               <span>Vote for the best image!</span>
               <span>Press one</span>
@@ -661,7 +666,8 @@ export function Game() {
           </div>
         );
       } else if (
-        (currentTime ?? 0) >= (gameMetaRecord.timestamps?.timestampEndVote ?? 0)
+        (currentTime ?? 0) >=
+        (lobbyMetaRecord.timestamps?.timestampEndVote ?? 0)
       ) {
         content = (
           <div className="grid grid-rows-[1fr_1fr_1fr]">
@@ -695,19 +701,19 @@ export function Game() {
                       error: false,
                       messageId,
                     },
-                    setProgressGameLoading,
-                    progressGameLoadingRef,
+                    setProgressLobbyLoading,
+                    progressLobbyLoadingRef,
                   );
                   sendMessage({
-                    action: "progressGame",
+                    action: "progressLobby",
                     dataClient: { status: "lobby" },
                     messageId,
                   });
                 }}
-                disabled={progressGameLoading?.loading ?? false}
+                disabled={progressLobbyLoading?.loading ?? false}
               >
-                {(progressGameLoading?.loading ?? false) &&
-                !progressGameLoading?.error ? (
+                {(progressLobbyLoading?.loading ?? false) &&
+                !progressLobbyLoading?.error ? (
                   <span className="loading loading-spinner"></span>
                 ) : (
                   "Back to lobby"

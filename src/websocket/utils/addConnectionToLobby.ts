@@ -10,15 +10,15 @@ import type { ConnectionRecord } from "../../server/db/dynamodb/connection";
 import { type PlayerRecord } from "../../server/db/dynamodb/player";
 import { deleteConnection } from "./deleteConnection";
 
-export async function addConnectionToGame(
+export async function addConnectionToLobby(
   connectionId: string,
-  gameId: string,
+  lobbyId: string,
   name: string,
   playerId: string,
   secretId: string,
   ddbClient: DynamoDB,
 ) {
-  // check that connection isn't in another game
+  // check that connection isn't in another lobby
   const deletedConnectionRecords = await deleteConnection(connectionId);
 
   // add/update the player record with the name
@@ -28,7 +28,7 @@ export async function addConnectionToGame(
       new UpdateItemCommand({
         TableName: Resource.Chimpin.name,
         Key: marshall({
-          pk: `lobby#${gameId}`,
+          pk: `lobby#${lobbyId}`,
           sk: `player#${playerId}`,
         }),
         UpdateExpression: "SET #name = :name, secretId = :secretId",
@@ -73,13 +73,13 @@ export async function addConnectionToGame(
     throw new Error("Incorrect secret");
   }
 
-  // add the connection to the game
+  // add the connection to the lobby
   const connectionRecord: ConnectionRecord = {
-    pk: `lobby#${gameId}`,
+    pk: `lobby#${lobbyId}`,
     sk: `connection#${connectionId}`,
     playerId,
   };
-  console.debug("Adding connection to game", connectionRecord);
+  console.debug("Adding connection to lobby", connectionRecord);
   await ddbClient.send(
     new PutItemCommand({
       TableName: Resource.Chimpin.name,

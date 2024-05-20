@@ -10,13 +10,13 @@ import type { APIGatewayProxyWebsocketHandlerV2 } from "aws-lambda";
 import { Resource } from "sst";
 
 import type { ConnectionRecord } from "../server/db/dynamodb/connection";
-import type { GameMetaRecord } from "../server/db/dynamodb/gameMeta";
-import { sendMessageToAllGameConnections } from "./utils/sendMessageToAllGameConnections";
+import type { LobbyMetaRecord } from "../server/db/dynamodb/lobbyMeta";
 import {
-  progressGameMessageSchema,
-  type ProgressGameMessage,
-} from "./messageschema/client2server/progressGame";
-import type { ProgressGameResponse } from "./messageschema/server2client/responses/progressGame";
+  progressLobbyMessageSchema,
+  type ProgressLobbyMessage,
+} from "./messageschema/client2server/progressLobby";
+import type { ProgressLobbyResponse } from "./messageschema/server2client/responses/progresLobby";
+import { sendMessageToAllLobbyConnections } from "./utils/sendMessageToAllLobbyConnections";
 
 const ddbClient = new DynamoDB();
 
@@ -30,13 +30,13 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   if (event.body == null) {
     throw new Error("No body");
   }
-  const message = JSON.parse(event.body) as ProgressGameMessage;
+  const message = JSON.parse(event.body) as ProgressLobbyMessage;
   try {
-    progressGameMessageSchema.parse(message);
+    progressLobbyMessageSchema.parse(message);
   } catch (error) {
     if (error instanceof Error) {
       console.warn(error.message);
-      const response: ProgressGameResponse = {
+      const response: ProgressLobbyResponse = {
         ...message,
         serverStatus: "bad request",
       };
@@ -69,8 +69,8 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
     connectionResponse.Items[0]!,
   ) as ConnectionRecord;
 
-  // update game meta
-  const gameDdbRecord = (
+  // update lobby meta
+  const lobbyDdbRecord = (
     await ddbClient.send(
       new GetItemCommand({
         TableName: Resource.Chimpin.name,
@@ -81,8 +81,8 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
       }),
     )
   ).Item;
-  if (gameDdbRecord == null) {
-    throw new Error("No such game");
+  if (lobbyDdbRecord == null) {
+    throw new Error("No such lobby");
   }
   let updateExpression = "SET #status = :status";
   const expressionAttributeNames: Record<string, string> = {
@@ -91,16 +91,16 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   const expressionAttributeValues: Record<string, unknown> = {
     ":status": message.dataClient.status,
   };
-  const gameRecord = unmarshall(gameDdbRecord) as GameMetaRecord;
-  gameRecord.status = message.dataClient.status;
+  const lobbyRecord = unmarshall(lobbyDdbRecord) as LobbyMetaRecord;
+  lobbyRecord.status = message.dataClient.status;
   if (message.dataClient.status === "playing") {
-    gameRecord.timestamps = {
+    lobbyRecord.timestamps = {
       timestampEndPlay: Date.now() / 1000 + 30,
       timestampEndVote: Date.now() / 1000 + 60,
     };
     updateExpression += ", #timestamps = :timestamps";
     expressionAttributeNames["#timestamps"] = "timestamps";
-    expressionAttributeValues[":timestamps"] = gameRecord.timestamps;
+    expressionAttributeValues[":timestamps"] = lobbyRecord.timestamps;
   }
   await ddbClient.send(
     new UpdateItemCommand({
@@ -122,14 +122,14 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   }
 
   // send message to all connections
-  await sendMessageToAllGameConnections(
+  await sendMessageToAllLobbyConnections(
     connectionRecord.pk.split("#")[1]!,
-    { dataServer: gameRecord, action: "progressedGame" },
+    { dataServer: lobbyRecord, action: "progressedLobby" },
     ddbClient,
     apiClient,
   );
 
-  const response: ProgressGameResponse = {
+  const response: ProgressLobbyResponse = {
     ...message,
     serverStatus: "success",
   };

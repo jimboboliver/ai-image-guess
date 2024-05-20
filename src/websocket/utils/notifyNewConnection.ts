@@ -37,14 +37,14 @@ export async function notifyNewConnection(
     const connectionId = existingConnectionRecord.sk.split("#")[1];
     try {
       console.debug("Sending message to a connection", connectionId);
-      const fullGameMessage: NewPlayerMessage = {
+      const fullLobbyMessage: NewPlayerMessage = {
         action: "newPlayer",
         dataServer: { connectionRecord, playerPublicRecord, handPublicRecord },
       };
       await apiClient.send(
         new PostToConnectionCommand({
           ConnectionId: connectionId,
-          Data: JSON.stringify(fullGameMessage),
+          Data: JSON.stringify(fullLobbyMessage),
         }),
       );
     } catch (error) {

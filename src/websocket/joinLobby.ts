@@ -9,30 +9,26 @@ import type { APIGatewayProxyWebsocketHandlerV2 } from "aws-lambda";
 import { Resource } from "sst";
 
 import type { ConnectionRecord } from "../server/db/dynamodb/connection";
-import type { GameMetaRecord } from "../server/db/dynamodb/gameMeta";
-import type { HandGuessRecord } from "../server/db/dynamodb/handGuess";
+import type {
+  HandGuessPublicRecord,
+  HandGuessRecord,
+} from "../server/db/dynamodb/handGuess";
 import type { HandVoteRecord } from "../server/db/dynamodb/handVote";
+import type { LobbyMetaRecord } from "../server/db/dynamodb/lobbyMeta";
 import type { PlayerRecord } from "../server/db/dynamodb/player";
 import {
-  makeGameMessageSchema,
-  type MakeGameMessage,
-} from "./messageschema/client2server/makeGame";
-import type { MakeGameResponse } from "./messageschema/server2client/responses/makeGame";
+  joinLobbyMessageSchema,
+  type JoinLobbyMessage,
+} from "./messageschema/client2server/joinLobby";
+import type { JoinLobbyResponse } from "./messageschema/server2client/responses/joinLobby";
 import { deleteConnection } from "./utils/deleteConnection";
-import { sendFullGame } from "./utils/sendFullGame";
+import { notifyDeleteConnection } from "./utils/notifyDeleteConnection";
+import { notifyNewConnection } from "./utils/notifyNewConnection";
+import { sendFullLobby } from "./utils/sendFullLobby";
 
 const ddbClient = new DynamoDB();
 
 let apiClient: ApiGatewayManagementApiClient;
-
-function generateRandomCode(length = 4): string {
-  const characters = "ABCDEFGHJKMNPQRSTUVWXYZ123456789";
-  let result = "";
-  for (let i = 0; i < length; i++) {
-    result += characters.charAt(Math.floor(Math.random() * characters.length));
-  }
-  return result;
-}
 
 export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   console.debug(event);
@@ -42,14 +38,13 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   if (event.body == null) {
     throw new Error("No body");
   }
-
-  const message = JSON.parse(event.body) as MakeGameMessage;
+  const message = JSON.parse(event.body) as JoinLobbyMessage;
   try {
-    makeGameMessageSchema.parse(message);
+    joinLobbyMessageSchema.parse(message);
   } catch (error) {
     if (error instanceof Error) {
       console.warn(error.message);
-      const response: MakeGameResponse = {
+      const response: JoinLobbyResponse = {
         ...message,
         serverStatus: "bad request",
       };
@@ -61,66 +56,52 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
     throw new Error();
   }
 
-  // generate game code and create game
-  const gameCode = generateRandomCode();
-  const gameMetaRecord: GameMetaRecord = {
-    pk: `lobby#${gameCode}`,
-    sk: "meta",
-    status: "lobby",
-    gameCode: gameCode,
-    ownerConnectionId: event.requestContext.connectionId,
-    gameType: "vote",
-  };
-
-  // check that game doesn't exist
-  const gameMetaDdbResponse = await ddbClient.send(
+  const lobbyMetaDdbResponse = await ddbClient.send(
     new GetItemCommand({
       TableName: Resource.Chimpin.name,
       Key: marshall({
-        pk: `lobby#${gameCode}`,
+        pk: `lobby#${message.dataClient.lobbyCode}`,
         sk: "meta",
       }),
     }),
   );
-  if (gameMetaDdbResponse.Item != null) {
-    throw new Error("Game already exists!");
+  if (lobbyMetaDdbResponse.Item == null) {
+    console.warn("No such lobby");
+    const response: JoinLobbyResponse = {
+      ...message,
+      serverStatus: "bad request",
+    };
+    return {
+      statusCode: 400,
+      body: JSON.stringify(response),
+    };
   }
+  const lobbyMetaRecord = unmarshall(
+    lobbyMetaDdbResponse.Item,
+  ) as LobbyMetaRecord;
 
-  // add game to database
-  console.debug("Creating game", gameMetaRecord);
-  await ddbClient.send(
-    new PutItemCommand({
-      TableName: Resource.Chimpin.name,
-      Item: marshall(gameMetaRecord),
-    }),
+  // check that connection isn't in another lobby TODO notify other lobby
+  const deletedConnectionRecords = await deleteConnection(
+    event.requestContext.connectionId,
   );
-
-  if (apiClient == null) {
-    apiClient = new ApiGatewayManagementApiClient({
-      endpoint: `https://${event.requestContext.domainName}/${event.requestContext.stage}`,
-    });
-  }
-
-  // add the connection to the game
-  // check that connection isn't in another game TODO notify other game
-  await deleteConnection(event.requestContext.connectionId);
 
   // add/update the player record with the name
   const playerGetResponse = await ddbClient.send(
     new GetItemCommand({
       TableName: Resource.Chimpin.name,
       Key: marshall({
-        pk: `lobby#${gameCode}`,
+        pk: `lobby#${message.dataClient.lobbyCode}`,
         sk: `player#${message.dataClient.playerId}`,
       }),
     }),
   );
   let playerRecord: PlayerRecord;
   let handRecord: HandGuessRecord | HandVoteRecord;
+  let handPublicRecord: HandGuessPublicRecord | HandVoteRecord;
   if (playerGetResponse.Item == null) {
-    const pk = `lobby#${gameCode}`;
+    const pk = `lobby#${message.dataClient.lobbyCode}`;
     const skHand = `hand#${message.dataClient.playerId}`;
-    if (gameMetaRecord.gameType === "guess") {
+    if (lobbyMetaRecord.gameType === "guess") {
       handRecord = {
         pk,
         sk: skHand,
@@ -136,7 +117,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
     }
     // make a new player
     playerRecord = {
-      pk: `lobby#${gameCode}`,
+      pk: `lobby#${message.dataClient.lobbyCode}`,
       sk: `player#${message.dataClient.playerId}`,
       name: message.dataClient.name,
       secretId: message.dataClient.secretId,
@@ -166,7 +147,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
       new GetItemCommand({
         TableName: Resource.Chimpin.name,
         Key: marshall({
-          pk: `lobby#${gameCode}`,
+          pk: `lobby#${message.dataClient.lobbyCode}`,
           sk: `hand#${message.dataClient.playerId}`,
         }),
       }),
@@ -178,14 +159,32 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
       | HandGuessRecord
       | HandVoteRecord;
   }
+  if ("words" in handRecord) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { words, ...temp } = handRecord;
+    handPublicRecord = temp;
+  } else {
+    handPublicRecord = handRecord;
+  }
 
-  // add the connection to the game
+  if (apiClient == null) {
+    apiClient = new ApiGatewayManagementApiClient({
+      endpoint: `https://${event.requestContext.domainName}/${event.requestContext.stage}`,
+    });
+  }
+
+  // notify all deleted connections (if any)
+  for (const deletedConnectionRecord of deletedConnectionRecords) {
+    await notifyDeleteConnection(deletedConnectionRecord, ddbClient, apiClient);
+  }
+
+  // add the connection to the lobby
   const connectionRecord: ConnectionRecord = {
-    pk: `lobby#${gameCode}`,
+    pk: `lobby#${message.dataClient.lobbyCode}`,
     sk: `connection#${event.requestContext.connectionId}`,
     playerId: message.dataClient.playerId,
   };
-  console.debug("Adding connection to game", connectionRecord);
+  console.debug("Adding connection to lobby", connectionRecord);
   await ddbClient.send(
     new PutItemCommand({
       TableName: Resource.Chimpin.name,
@@ -193,19 +192,32 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
     }),
   );
 
-  // send full game to new connection
-  await sendFullGame(
+  // notify other connections of new connection
+  await notifyNewConnection(
+    connectionRecord,
+    playerRecord,
+    handPublicRecord,
+    ddbClient,
+    apiClient,
+  );
+
+  // send full lobby to new connection
+  await sendFullLobby(
     event.requestContext.connectionId,
-    gameCode,
+    message.dataClient.lobbyCode,
     ddbClient,
     apiClient,
   );
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { secretId, ...playerPublicRecord } = playerRecord;
-  const response: MakeGameResponse = {
+  const response: JoinLobbyResponse = {
     ...message,
-    dataServer: { connectionRecord, playerPublicRecord, handRecord },
+    dataServer: {
+      connectionRecord,
+      playerPublicRecord,
+      handRecord,
+    },
     serverStatus: "success",
   };
   return {

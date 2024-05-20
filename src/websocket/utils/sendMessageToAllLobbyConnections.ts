@@ -14,8 +14,8 @@ import { Resource } from "sst";
 import type { AnyServerMessage } from "../messageschema/server2client/any";
 import { deleteConnection } from "./deleteConnection";
 
-export async function sendMessageToAllGameConnections(
-  gameId: string,
+export async function sendMessageToAllLobbyConnections(
+  lobbyId: string,
   message: AnyServerMessage,
   ddbClient: DynamoDB,
   apiClient: ApiGatewayManagementApiClient,
@@ -25,7 +25,7 @@ export async function sendMessageToAllGameConnections(
       TableName: Resource.Chimpin.name,
       KeyConditionExpression: "pk = :pk and begins_with(sk, :idPrefix)",
       ExpressionAttributeValues: marshall({
-        ":pk": `lobby#${gameId}`,
+        ":pk": `lobby#${lobbyId}`,
         ":idPrefix": "connection#",
       }),
     }),

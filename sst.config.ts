@@ -47,10 +47,10 @@ export default $config({
       "$connect",
       "$disconnect",
       "heartBeat",
-      "joinGame",
-      "makeGame",
+      "joinLobby",
+      "makeLobby",
       "makeImage",
-      "progressGame",
+      "progressLobby",
       "vote",
     ]) {
       const route = api.route(

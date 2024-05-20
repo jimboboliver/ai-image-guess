@@ -15,12 +15,12 @@ import { v4 as uuidv4 } from "uuid";
 import type { ConnectionRecord } from "../server/db/dynamodb/connection";
 import type { ImageRecord } from "../server/db/dynamodb/image";
 import type { PlayerRecord } from "../server/db/dynamodb/player";
-import { sendMessageToAllGameConnections } from "./utils/sendMessageToAllGameConnections";
 import {
   makeImageMessageSchema,
   type MakeImageMessage,
 } from "./messageschema/client2server/makeImage";
 import type { MakeImageResponse } from "./messageschema/server2client/responses/makeImage";
+import { sendMessageToAllLobbyConnections } from "./utils/sendMessageToAllLobbyConnections";
 
 const ddbClient = new DynamoDB();
 
@@ -170,7 +170,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   }
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { secretId, ...playerPublicRecord } = playerRecord;
-  await sendMessageToAllGameConnections(
+  await sendMessageToAllLobbyConnections(
     connectionRecord.pk.split("#")[1]!,
     { dataServer: { imageRecord, playerPublicRecord }, action: "imageLoading" },
     ddbClient,
@@ -199,7 +199,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
         Item: marshall(imageRecord),
       }),
     );
-    await sendMessageToAllGameConnections(
+    await sendMessageToAllLobbyConnections(
       connectionRecord.pk.split("#")[1]!,
       {
         dataServer: { imageRecord, playerPublicRecord },
@@ -230,7 +230,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
       Item: marshall(imageRecord),
     }),
   );
-  await sendMessageToAllGameConnections(
+  await sendMessageToAllLobbyConnections(
     connectionRecord.pk.split("#")[1]!,
     {
       dataServer: { imageRecord, playerPublicRecord },

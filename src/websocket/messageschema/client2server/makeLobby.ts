@@ -3,8 +3,8 @@ import { z } from "zod";
 
 import { baseMessageSchema } from "./base";
 
-export const makeGameMessageSchema = baseMessageSchema.extend({
-  action: z.literal("makeGame"),
+export const makeLobbyMessageSchema = baseMessageSchema.extend({
+  action: z.literal("makeLobby"),
   dataClient: z.object({
     name: playerRecordSchema.shape.name,
     playerId: z.string(),
@@ -12,4 +12,4 @@ export const makeGameMessageSchema = baseMessageSchema.extend({
   }),
 });
 
-export type MakeGameMessage = z.infer<typeof makeGameMessageSchema>;
+export type MakeLobbyMessage = z.infer<typeof makeLobbyMessageSchema>;

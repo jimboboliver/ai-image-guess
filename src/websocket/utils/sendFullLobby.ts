@@ -8,36 +8,36 @@ import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import { Resource } from "sst";
 
 import type { ConnectionRecord } from "../../server/db/dynamodb/connection";
-import type { GameMetaRecord } from "../../server/db/dynamodb/gameMeta";
 import type { ImageRecord } from "../../server/db/dynamodb/image";
+import type { LobbyMetaRecord } from "../../server/db/dynamodb/lobbyMeta";
 import type {
   PlayerPublicRecord,
   PlayerRecord,
 } from "../../server/db/dynamodb/player";
-import type { FullGameMessage } from "../messageschema/server2client/fullGame";
+import type { FullLobbyMessage } from "../messageschema/server2client/fullLobby";
 import { deleteConnection } from "./deleteConnection";
 
-export async function sendFullGame(
+export async function sendFullLobby(
   connectionId: string,
-  gameId: string,
+  lobbyId: string,
   ddbClient: DynamoDB,
   apiClient: ApiGatewayManagementApiClient,
 ) {
-  const gameDdbResponse = await ddbClient.send(
+  const lobbyDdbResponse = await ddbClient.send(
     new QueryCommand({
       TableName: Resource.Chimpin.name,
       KeyConditionExpression: "pk = :pk",
       ExpressionAttributeValues: marshall({
-        ":pk": `lobby#${gameId}`,
+        ":pk": `lobby#${lobbyId}`,
       }),
     }),
   );
 
-  const gameRecords =
-    gameDdbResponse.Items?.map((recordUnmarshalled) => {
+  const lobbyRecords =
+    lobbyDdbResponse.Items?.map((recordUnmarshalled) => {
       const record = unmarshall(recordUnmarshalled) as
         | ConnectionRecord
-        | GameMetaRecord
+        | LobbyMetaRecord
         | ImageRecord
         | PlayerRecord;
 
@@ -51,14 +51,14 @@ export async function sendFullGame(
 
   try {
     console.debug("Sending message to a connection", connectionId);
-    const fullGameMessage: FullGameMessage = {
-      action: "fullGame",
-      dataServer: gameRecords,
+    const fullLobbyMessage: FullLobbyMessage = {
+      action: "fullLobby",
+      dataServer: lobbyRecords,
     };
     await apiClient.send(
       new PostToConnectionCommand({
         ConnectionId: connectionId,
-        Data: JSON.stringify(fullGameMessage),
+        Data: JSON.stringify(fullLobbyMessage),
       }),
     );
   } catch (error) {

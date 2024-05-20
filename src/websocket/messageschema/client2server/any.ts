@@ -1,17 +1,17 @@
 import { z } from "zod";
 
-import { joinGameMessageSchema } from "./joinGame";
-import { makeGameMessageSchema } from "./makeGame";
+import { joinLobbyMessageSchema } from "./joinLobby";
 import { makeImageMessageSchema } from "./makeImage";
-import { progressGameMessageSchema } from "./progressGame";
+import { makeLobbyMessageSchema } from "./makeLobby";
+import { progressLobbyMessageSchema } from "./progressLobby";
 import { voteMessageSchema } from "./vote";
 
 export const anyClientMessageSchema = z.union([
-  progressGameMessageSchema,
-  makeGameMessageSchema,
+  progressLobbyMessageSchema,
+  makeLobbyMessageSchema,
   voteMessageSchema,
   makeImageMessageSchema,
-  joinGameMessageSchema,
+  joinLobbyMessageSchema,
 ]);
 
 export type AnyClientMessage = z.infer<typeof anyClientMessageSchema>;

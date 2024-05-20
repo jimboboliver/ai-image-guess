@@ -18,7 +18,7 @@ import {
   type VoteMessage,
 } from "./messageschema/client2server/vote";
 import type { VoteResponse } from "./messageschema/server2client/responses/vote";
-import { sendMessageToAllGameConnections } from "./utils/sendMessageToAllGameConnections";
+import { sendMessageToAllLobbyConnections } from "./utils/sendMessageToAllLobbyConnections";
 
 const ddbClient = new DynamoDB();
 
@@ -194,7 +194,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   );
 
   // send vote to all connections
-  await sendMessageToAllGameConnections(
+  await sendMessageToAllLobbyConnections(
     connectionRecord.pk.split("#")[1]!,
     {
       dataServer: { imageRecord, handRecord },
