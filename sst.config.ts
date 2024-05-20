@@ -11,7 +11,7 @@ export default {
   },
   stacks(app) {
     app.stack(function Site({ stack }) {
-      const table = new Table(stack, "chimpin3", {
+      const table = new Table(stack, "chimpin4", {
         fields: {
           pk: "string",
           sk: "string",

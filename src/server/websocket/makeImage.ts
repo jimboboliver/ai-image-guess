@@ -115,7 +115,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   // get connection from db
   const connectionResponse = await ddbClient.send(
     new QueryCommand({
-      TableName: Table.chimpin3.tableName,
+      TableName: Table.chimpin4.tableName,
       IndexName: "skIndex",
       KeyConditionExpression: "sk = :sk",
       ExpressionAttributeValues: marshall({
@@ -134,7 +134,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   ) as ConnectionRecord;
   const playerDdbResponse = await ddbClient.send(
     new GetItemCommand({
-      TableName: Table.chimpin3.tableName,
+      TableName: Table.chimpin4.tableName,
       Key: marshall({
         pk: connectionRecord.pk,
         sk: `player#${message.dataClient.playerId}`,
@@ -159,7 +159,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   };
   await ddbClient.send(
     new PutItemCommand({
-      TableName: Table.chimpin3.tableName,
+      TableName: Table.chimpin4.tableName,
       Item: marshall(imageRecord),
     }),
   );
@@ -195,7 +195,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
     imageRecord.error = true;
     await ddbClient.send(
       new PutItemCommand({
-        TableName: Table.chimpin3.tableName,
+        TableName: Table.chimpin4.tableName,
         Item: marshall(imageRecord),
       }),
     );
@@ -226,7 +226,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   imageRecord.loading = false;
   await ddbClient.send(
     new PutItemCommand({
-      TableName: Table.chimpin3.tableName,
+      TableName: Table.chimpin4.tableName,
       Item: marshall(imageRecord),
     }),
   );

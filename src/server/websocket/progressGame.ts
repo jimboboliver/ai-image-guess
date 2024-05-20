@@ -51,7 +51,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   // get connection from db
   const connectionResponse = await ddbClient.send(
     new QueryCommand({
-      TableName: Table.chimpin3.tableName,
+      TableName: Table.chimpin4.tableName,
       IndexName: "skIndex",
       KeyConditionExpression: "sk = :sk",
       ExpressionAttributeValues: marshall({
@@ -73,7 +73,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   const gameDdbRecord = (
     await ddbClient.send(
       new GetItemCommand({
-        TableName: Table.chimpin3.tableName,
+        TableName: Table.chimpin4.tableName,
         Key: marshall({
           pk: connectionRecord.pk,
           sk: "meta",
@@ -104,7 +104,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   }
   await ddbClient.send(
     new UpdateItemCommand({
-      TableName: Table.chimpin3.tableName,
+      TableName: Table.chimpin4.tableName,
       Key: marshall({
         pk: connectionRecord.pk,
         sk: "meta",

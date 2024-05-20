@@ -22,7 +22,7 @@ export async function sendMessageToAllGameConnections(
 ) {
   const connectionDdbResponse = await ddbClient.send(
     new QueryCommand({
-      TableName: Table.chimpin3.tableName,
+      TableName: Table.chimpin4.tableName,
       KeyConditionExpression: "pk = :pk and begins_with(sk, :idPrefix)",
       ExpressionAttributeValues: marshall({
         ":pk": `game#${gameId}`,

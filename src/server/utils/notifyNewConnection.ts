@@ -23,7 +23,7 @@ export async function notifyNewConnection(
 ) {
   const existingConnectionResponse = await ddbClient.send(
     new QueryCommand({
-      TableName: Table.chimpin3.tableName,
+      TableName: Table.chimpin4.tableName,
       KeyConditionExpression: "pk = :pk AND begins_with(sk, :connection)",
       ExpressionAttributeValues: marshall({
         ":pk": connectionRecord.pk,

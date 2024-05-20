@@ -26,7 +26,7 @@ export async function addConnectionToGame(
   try {
     playerUpdateResponse = await ddbClient.send(
       new UpdateItemCommand({
-        TableName: Table.chimpin3.tableName,
+        TableName: Table.chimpin4.tableName,
         Key: marshall({
           pk: `game#${gameId}`,
           sk: `player#${playerId}`,
@@ -82,7 +82,7 @@ export async function addConnectionToGame(
   console.debug("Adding connection to game", connectionRecord);
   await ddbClient.send(
     new PutItemCommand({
-      TableName: Table.chimpin3.tableName,
+      TableName: Table.chimpin4.tableName,
       Item: marshall(connectionRecord),
     }),
   );

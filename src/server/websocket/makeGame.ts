@@ -75,7 +75,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   // check that game doesn't exist
   const gameMetaDdbResponse = await ddbClient.send(
     new GetItemCommand({
-      TableName: Table.chimpin3.tableName,
+      TableName: Table.chimpin4.tableName,
       Key: marshall({
         pk: `game#${gameCode}`,
         sk: "meta",
@@ -90,7 +90,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   console.debug("Creating game", gameMetaRecord);
   await ddbClient.send(
     new PutItemCommand({
-      TableName: Table.chimpin3.tableName,
+      TableName: Table.chimpin4.tableName,
       Item: marshall(gameMetaRecord),
     }),
   );
@@ -108,7 +108,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   // add/update the player record with the name
   const playerGetResponse = await ddbClient.send(
     new GetItemCommand({
-      TableName: Table.chimpin3.tableName,
+      TableName: Table.chimpin4.tableName,
       Key: marshall({
         pk: `game#${gameCode}`,
         sk: `player#${message.dataClient.playerId}`,
@@ -146,13 +146,13 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
     console.debug("Creating player", playerRecord);
     await ddbClient.send(
       new PutItemCommand({
-        TableName: Table.chimpin3.tableName,
+        TableName: Table.chimpin4.tableName,
         Item: marshall(playerRecord),
       }),
     );
     await ddbClient.send(
       new PutItemCommand({
-        TableName: Table.chimpin3.tableName,
+        TableName: Table.chimpin4.tableName,
         Item: marshall(handRecord),
       }),
     );
@@ -164,7 +164,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
     // get the hand
     const handGetResponse = await ddbClient.send(
       new GetItemCommand({
-        TableName: Table.chimpin3.tableName,
+        TableName: Table.chimpin4.tableName,
         Key: marshall({
           pk: `game#${gameCode}`,
           sk: `hand#${message.dataClient.playerId}`,
@@ -188,7 +188,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   console.debug("Adding connection to game", connectionRecord);
   await ddbClient.send(
     new PutItemCommand({
-      TableName: Table.chimpin3.tableName,
+      TableName: Table.chimpin4.tableName,
       Item: marshall(connectionRecord),
     }),
   );

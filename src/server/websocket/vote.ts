@@ -59,7 +59,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   // check that the player hasn't voted yet
   const connectionResponse = await ddbClient.send(
     new QueryCommand({
-      TableName: Table.chimpin3.tableName,
+      TableName: Table.chimpin4.tableName,
       IndexName: "skIndex",
       KeyConditionExpression: "sk = :sk",
       ExpressionAttributeValues: marshall({
@@ -78,7 +78,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   ) as ConnectionRecord;
   const playerDdbResponse = await ddbClient.send(
     new GetItemCommand({
-      TableName: Table.chimpin3.tableName,
+      TableName: Table.chimpin4.tableName,
       Key: marshall({
         pk: connectionRecord.pk,
         sk: `player#${message.dataClient.playerId}`,
@@ -95,7 +95,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   // get player's hand
   const handDdbResponse = await ddbClient.send(
     new GetItemCommand({
-      TableName: Table.chimpin3.tableName,
+      TableName: Table.chimpin4.tableName,
       Key: marshall({
         pk: connectionRecord.pk,
         sk: `hand#${playerRecord.handId}`,
@@ -120,7 +120,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   // get image from db
   const imageResponse = await ddbClient.send(
     new QueryCommand({
-      TableName: Table.chimpin3.tableName,
+      TableName: Table.chimpin4.tableName,
       KeyConditionExpression: "pk = :pk and sk = :sk",
       ExpressionAttributeValues: marshall({
         ":pk": connectionRecord.pk,
@@ -139,7 +139,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   try {
     await ddbClient.send(
       new UpdateItemCommand({
-        TableName: Table.chimpin3.tableName,
+        TableName: Table.chimpin4.tableName,
         Key: marshall({
           pk: handRecord.pk,
           sk: handRecord.sk,
@@ -178,7 +178,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   // TODO handle race to update vote count
   await ddbClient.send(
     new UpdateItemCommand({
-      TableName: Table.chimpin3.tableName,
+      TableName: Table.chimpin4.tableName,
       Key: marshall({
         pk: connectionRecord.pk,
         sk: `image#${message.dataClient.imageId}`,
