@@ -94,6 +94,7 @@ export default $config({
         ...envWithoutNodeEnv,
         NEXT_PUBLIC_API_ENDPOINT_WEBSOCKET: api.url,
       },
+      link: [api],
     });
   },
 });
