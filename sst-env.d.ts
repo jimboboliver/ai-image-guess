@@ -12,6 +12,10 @@ declare module "sst" {
       name: string
       type: "sst.aws.Dynamo"
     }
+    Site: {
+      type: "sst.aws.Nextjs"
+      url: string
+    }
   }
 }
 export {}

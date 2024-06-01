@@ -26,7 +26,6 @@ import {
 } from "~/websocket/messageschema/server2client/any";
 import Image from "next/image";
 import React from "react";
-import { Resource } from "sst";
 import { v4 as uuid } from "uuid";
 
 import { uniqueObjArray } from "../utils/uniqueObjArray";
@@ -125,8 +124,8 @@ export function Game() {
   const intervaHeartBeatRef = React.useRef<NodeJS.Timeout | null>();
   React.useEffect(() => {
     const openWebSocket = () => {
-      console.debug("Opening websocket");
-      const wsNew = new WebSocket(Resource.Api.url.replace("https", "wss"));
+      console.debug(`Opening websocket ${env.NEXT_PUBLIC_API_ENDPOINT_WEBSOCKET}`);
+      const wsNew = new WebSocket(env.NEXT_PUBLIC_API_ENDPOINT_WEBSOCKET);
       if (intervaHeartBeatRef.current != null) {
         clearInterval(intervaHeartBeatRef.current);
         intervaHeartBeatRef.current = null;
