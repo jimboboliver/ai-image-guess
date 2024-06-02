@@ -1,3 +1,14 @@
+# Chimpin
+
+## Development troubleshooting
+
+### Environment variables
+
+- For IaC related environment variables:
+  - used in the client side of the Next app, you need to use the environment parameter in the IaC to pass the variable in, and then use 'raw' `process.env` to access.
+  - used server side only you can use sst ion linking with `import { Resource } from "sst";` to access the environment variables.
+- For other environment variables, use file at ./src/env.mjs.
+
 # Create T3 App
 
 This is a [T3 Stack](https://create.t3.gg/) project bootstrapped with `create-t3-app`.

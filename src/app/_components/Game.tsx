@@ -1,7 +1,6 @@
 "use client";
 
 import { CheckIcon, StarIcon } from "@heroicons/react/24/solid";
-import { env } from "~/env";
 import type { ConnectionRecord } from "~/server/db/dynamodb/connection";
 import type { HandGuessPublicRecord } from "~/server/db/dynamodb/handGuess";
 import type { HandVoteRecord } from "~/server/db/dynamodb/handVote";
@@ -124,8 +123,15 @@ export function Game() {
   const intervaHeartBeatRef = React.useRef<NodeJS.Timeout | null>();
   React.useEffect(() => {
     const openWebSocket = () => {
-      console.debug(`Opening websocket ${env.NEXT_PUBLIC_API_ENDPOINT_WEBSOCKET}`);
-      const wsNew = new WebSocket(env.NEXT_PUBLIC_API_ENDPOINT_WEBSOCKET);
+      if (!process.env.NEXT_PUBLIC_API_ENDPOINT_WEBSOCKET) {
+        throw new Error("NEXT_PUBLIC_API_ENDPOINT_WEBSOCKET not set");
+      }
+      console.debug(
+        `Opening websocket ${process.env.NEXT_PUBLIC_API_ENDPOINT_WEBSOCKET}`,
+      );
+      const wsNew = new WebSocket(
+        process.env.NEXT_PUBLIC_API_ENDPOINT_WEBSOCKET,
+      );
       if (intervaHeartBeatRef.current != null) {
         clearInterval(intervaHeartBeatRef.current);
         intervaHeartBeatRef.current = null;
