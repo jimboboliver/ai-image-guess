@@ -12,10 +12,10 @@ import { Resource } from "sst";
 import type { ConnectionRecord } from "../server/db/dynamodb/connection";
 import type { LobbyMetaRecord } from "../server/db/dynamodb/lobbyMeta";
 import {
-  progressLobbyMessageSchema,
-  type ProgressLobbyMessage,
-} from "./messageschema/client2server/progressLobby";
-import type { ProgressLobbyResponse } from "./messageschema/server2client/responses/progresLobby";
+  startRoundMessageSchema,
+  type StartRoundMessage,
+} from "./messageschema/client2server/startRound";
+import type { StartRoundResponse } from "./messageschema/server2client/responses/startRound";
 import { sendMessageToAllLobbyConnections } from "./utils/sendMessageToAllLobbyConnections";
 
 const ddbClient = new DynamoDB();
@@ -30,13 +30,13 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   if (event.body == null) {
     throw new Error("No body");
   }
-  const message = JSON.parse(event.body) as ProgressLobbyMessage;
+  const message = JSON.parse(event.body) as StartRoundMessage;
   try {
-    progressLobbyMessageSchema.parse(message);
+    startRoundMessageSchema.parse(message);
   } catch (error) {
     if (error instanceof Error) {
       console.warn(error.message);
-      const response: ProgressLobbyResponse = {
+      const response: StartRoundResponse = {
         ...message,
         serverStatus: "bad request",
       };
@@ -95,7 +95,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   lobbyRecord.status = message.dataClient.status;
   if (message.dataClient.status === "playing") {
     lobbyRecord.timestamps = {
-      timestampEndPlay: Date.now() / 1000 + 30,
+      timestampEndGenerate: Date.now() / 1000 + 30,
       timestampEndVote: Date.now() / 1000 + 60,
     };
     updateExpression += ", #timestamps = :timestamps";
@@ -129,7 +129,7 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
     apiClient,
   );
 
-  const response: ProgressLobbyResponse = {
+  const response: StartRoundResponse = {
     ...message,
     serverStatus: "success",
   };

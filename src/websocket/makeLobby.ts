@@ -68,8 +68,8 @@ export const main: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
     sk: "meta",
     status: "lobby",
     lobbyCode: lobbyCode,
-    ownerConnectionId: event.requestContext.connectionId,
-    gameType: "vote",
+    ownerPlayerId: message.dataClient.playerId,
+    roundIds: [],
   };
 
   // check that lobby doesn't exist

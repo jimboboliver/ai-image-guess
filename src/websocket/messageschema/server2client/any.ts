@@ -2,17 +2,19 @@ import { z } from "zod";
 
 import { deleteConnectionMessageSchema } from "./deleteConnection";
 import { fullLobbyMessageSchema } from "./fullLobby";
+import { goToLobbyMessageSchema } from "./goToLobby";
 import { imageErrorMessageSchema } from "./imageError";
 import { imageGeneratedMessageSchema } from "./imageGenerated";
 import { imageLoadingMessageSchema } from "./imageLoading";
 import { internalServerErrorMessageSchema } from "./internalServerError";
 import { newPlayerMessageSchema } from "./newPlayer";
-import { progressedLobbyMessageSchema } from "./progressedLobby";
+import { goToLobbyResponseSchema } from "./responses/goToLobby";
 import { joinLobbyResponseSchema } from "./responses/joinLobby";
 import { makeImageResponseSchema } from "./responses/makeImage";
 import { makeLobbyResponseSchema } from "./responses/makeLobby";
-import { progressLobbyResponseSchema } from "./responses/progresLobby";
+import { startRoundResponseSchema } from "./responses/startRound";
 import { voteResponseSchema } from "./responses/vote";
+import { startRoundMessageSchema } from "./startRound";
 import { votedMessageSchema } from "./voted";
 
 export const anyServerMessageSchema = z.union([
@@ -21,17 +23,19 @@ export const anyServerMessageSchema = z.union([
   imageLoadingMessageSchema,
   imageErrorMessageSchema,
   imageGeneratedMessageSchema,
-  progressedLobbyMessageSchema,
+  startRoundMessageSchema,
   votedMessageSchema,
   newPlayerMessageSchema,
   deleteConnectionMessageSchema,
+  goToLobbyMessageSchema,
   // client2server message response
   internalServerErrorMessageSchema,
-  joinLobbyResponseSchema,
   makeLobbyResponseSchema,
+  joinLobbyResponseSchema,
+  startRoundResponseSchema,
   makeImageResponseSchema,
-  progressLobbyResponseSchema,
   voteResponseSchema,
+  goToLobbyResponseSchema,
 ]);
 
 export type AnyServerMessage = z.infer<typeof anyServerMessageSchema>;

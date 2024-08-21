@@ -120,7 +120,7 @@ export function Game() {
 
   const [errorMessage, setErrorMessage] = React.useState<string | undefined>();
 
-  const intervaHeartBeatRef = React.useRef<NodeJS.Timeout | null>();
+  const intervalHeartBeatRef = React.useRef<NodeJS.Timeout | null>();
   React.useEffect(() => {
     const openWebSocket = () => {
       if (!process.env.NEXT_PUBLIC_API_ENDPOINT_WEBSOCKET) {
@@ -132,11 +132,11 @@ export function Game() {
       const wsNew = new WebSocket(
         process.env.NEXT_PUBLIC_API_ENDPOINT_WEBSOCKET,
       );
-      if (intervaHeartBeatRef.current != null) {
-        clearInterval(intervaHeartBeatRef.current);
-        intervaHeartBeatRef.current = null;
+      if (intervalHeartBeatRef.current != null) {
+        clearInterval(intervalHeartBeatRef.current);
+        intervalHeartBeatRef.current = null;
       }
-      intervaHeartBeatRef.current = setInterval(
+      intervalHeartBeatRef.current = setInterval(
         () => {
           if (wsNew.readyState === wsNew.OPEN) {
             wsNew.send(JSON.stringify({ action: "heartBeat" }));
@@ -149,9 +149,9 @@ export function Game() {
       };
       wsNew.onclose = () => {
         console.debug("ws close");
-        if (intervaHeartBeatRef.current != null) {
-          clearInterval(intervaHeartBeatRef.current);
-          intervaHeartBeatRef.current = null;
+        if (intervalHeartBeatRef.current != null) {
+          clearInterval(intervalHeartBeatRef.current);
+          intervalHeartBeatRef.current = null;
         }
         setTimeout(() => {
           const newWs = openWebSocket();
@@ -341,9 +341,9 @@ export function Game() {
       if (wsRef.current != null) {
         wsRef.current.close();
       }
-      if (intervaHeartBeatRef.current != null) {
-        clearInterval(intervaHeartBeatRef.current);
-        intervaHeartBeatRef.current = null;
+      if (intervalHeartBeatRef.current != null) {
+        clearInterval(intervalHeartBeatRef.current);
+        intervalHeartBeatRef.current = null;
       }
     };
   }, [handleMessageLoading]);
